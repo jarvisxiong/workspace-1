@@ -1,0 +1,111 @@
+<%@page import="ume.pareva.snp.SnpUserDao"%>
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser user = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String lang = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeTempCache anyxsdc=null;
+UmeLanguagePropertyDao langpropdao=null;
+UmeUserDao umeuserdao=null;
+SnpUserDao snpuserdao=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+anyxsdc=(UmeTempCache) ac.getBean("umesdc");
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+umeuserdao=(UmeUserDao) ac.getBean("umeuserdao");
+snpuserdao=(SnpUserDao) ac.getBean("snpuserdao");
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+UmeUserSet cs = new UmeUserSet();
+umeuserdao.populate(cs);
+int totalUsers = cs.getItemCount();
+cs.setActive(1);
+umeuserdao.populate(cs);
+int activeUsers = cs.getItemCount();
+int onlineUsers = anyxsdc.getActiveUsers().size();
+
+UmeUser item = null;
+java.util.List<UmeUser> list = null;
+
+String search = aReq.get("search");
+String sstr = aReq.get("sstr");
+String stype = aReq.get("stype");
+int index = Integer.parseInt(aReq.get("index", "0"));
+
+
+String params = "search=" + search + "&sstr=" + sstr + "&stype=" + stype + "&index=" + index;
+String linkParams = "search=" + search + "&sstr=" + sstr + "&stype=" + stype + "&index=";
+
+if (!aReq.get("delete").equals("")) {
+    Enumeration e = request.getParameterNames();
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("del_")) {
+            //UmeUserDao.deleteUser(elem.substring(4));
+            snpuserdao.deleteSnpUser(elem.substring(4));
+        }
+    }
+
+}
+
+//if (!aReq.get("search").equals("") || !aReq.get("delete").equals("")) {
+System.out.println("index: " + index);
+cs = new UmeUserSet();
+cs.setPageIndex(index);
+
+if (stype.equals("all")) {
+    cs.setSearchType("all");    
+    cs.setLastName(sstr);
+    cs.setFirstName(sstr);
+    cs.setNickName(sstr);
+    cs.setMsisdn(sstr);
+    cs.setEmail(sstr);
+    cs.setLogin(sstr);
+}
+else if (stype.equals("lastname")) cs.setLastName(sstr);
+else if (stype.equals("firstname")) cs.setFirstName(sstr);
+else if (stype.equals("nickname")) cs.setNickName(sstr);
+else if (stype.equals("msisdn")) cs.setMsisdn(sstr);
+else if (stype.equals("email")) cs.setEmail(sstr);
+else if (stype.equals("login")) cs.setLogin(sstr);
+else if (stype.equals("unique")) cs.setUnique(sstr);
+else if (stype.equals("domain")) cs.setDomain(sstr);
+
+umeuserdao.populate(cs);
+list = cs.getList();
+
+int count = cs.getItemCount();
+int pageCount = cs.getPageCount();
+int maxCount = cs.getItemsPerPage();
+int curPage = (index/maxCount)+1;
+int startPage = curPage-5;
+int endPage = curPage+4;
+if (startPage<0) { endPage=endPage-startPage; startPage = 0; }
+if (endPage>pageCount) { startPage=startPage-endPage+pageCount; endPage=pageCount; if (startPage<0) startPage=0; }
+
+//}
+
+
+String bgColor="#EEEEEE";
+%>

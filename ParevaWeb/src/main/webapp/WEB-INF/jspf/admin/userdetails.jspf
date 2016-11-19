@@ -1,0 +1,221 @@
+<%@page import="ume.pareva.snp.SnpUserDao"%>
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+UmeTempCache anyxsdc=null;
+UmeLanguagePropertyDao langpropdao=null;
+UmeUserDao umeuserdao=null;
+SnpUserDao snpuserdao=null;
+UmeUserDetailsDao sdcuserdetaildao=null;
+UmePersonalCache umepersonalcache=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+anyxsdc=(UmeTempCache) ac.getBean("umesdc");
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+umeuserdao=(UmeUserDao) ac.getBean("umeuserdao");
+snpuserdao=(SnpUserDao) ac.getBean("snpuserdao");
+sdcuserdetaildao=(UmeUserDetailsDao) ac.getBean("umeuserdetailsdao");
+umepersonalcache=(UmePersonalCache) ac.getBean("umepersonalcache");
+
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+Properties p = ServiceProperties.getFromContext(service.getUnique(), "service", application);
+
+String uid = aReq.get("uid");
+System.out.println("UserUnique "+uid);
+UmeUser user = umeuserdao.getUser(uid);
+if (user==null) return;
+System.out.println("user: " + user);
+
+UmeUserDetails ud = user.getUserDetails();
+System.out.println("userDetails: " + ud);
+if (ud==null) { 
+    ud = new UmeUserDetails();
+    ud.setParsedMobile(user.getParsedMobile());
+    sdcuserdetaildao.addNewDetails(ud);
+    sdcuser.setUserDetails(ud);
+    umepersonalcache.setUser(sdcuser);
+}
+
+UmeUserGroup sdcgroup = null;
+SdcLanguage sdclang = null;
+
+String search = aReq.get("search");
+String sstr = aReq.get("sstr");
+String stype = aReq.get("stype");
+int index = Integer.parseInt(aReq.get("index", "0"));
+String params = "search=" + search + "&sstr=" + sstr + "&stype=" + stype + "&index=" + index;
+
+String statusMsg1="";
+String statusMsg2="";
+
+
+boolean dataSaved=false;
+String save= aReq.get("save");
+String resetPwd = aReq.get("resetPwd");
+
+String pwdType="";
+String pwd="";
+String sendEmail="";
+String sendSms="";
+String showOnScreen="";
+
+if (save.equals("Save")) {
+    String login = aReq.get("aLogin");
+    String wapid = aReq.get("aWapId");
+    String nick = aReq.get("aNickName");
+    String hash = aReq.get("aActiveClubCode");
+
+    if (!umeuserdao.checkUniqueness("aLogin", login, user.getDomain(), user.getUnique())) statusMsg1 = lp.get("logintaken") + "<br>";
+    if (!umeuserdao.checkUniqueness("aWapId", wapid, user.getDomain(), user.getUnique())) statusMsg1 += lp.get("wapidtaken") + "<br>";
+    //if (!UmeUserDao.checkUniqueness("aNickName", nick, user.getDomain(), user.getUnique(), con)) statusMsg1 += lp.get("nicktaken") + "<br>";
+    if (!umeuserdao.checkUniqueness("aActiveClubCode", hash, user.getDomain(), user.getUnique())) statusMsg1 += lp.get("hashtaken") + "<br>";
+
+    if (statusMsg1.equals("")) {
+
+        user.setLogin(login);
+        user.setActive(Integer.parseInt(aReq.get("aActive", "0")));
+        user.setFirstName(aReq.get("aFirstName"));
+        user.setLastName(aReq.get("aLastName"));
+        user.setMobile(aReq.get("aMobile"));
+        user.setParsedMobile(SdcMisc.parseMsisdn(user.getMobile()));
+        user.setNickName(aReq.get("aNickName"));
+        user.setCredits(Integer.parseInt(aReq.get("aCredits", "0")));
+        user.setUseGroupCredits(Integer.parseInt(aReq.get("aGrpCred", "0")));
+        user.setWapId(aReq.get("aWapId"));
+        user.setUserGroup(aReq.get("aUserGroup"));
+        user.setAdminGroup(Integer.parseInt(aReq.get("aAdminGroup", "0")));
+        user.setSecLevel(Integer.parseInt(aReq.get("aSecLevel", "0")));
+        user.setLanguage(aReq.get("aPrefLang"));
+        user.setEmail(aReq.get("aEmail"));
+        user.setActiveClubCode(aReq.get("aActiveClubCode"));
+        
+        user.updateMap("country", aReq.get("aCountry").toLowerCase());
+        sdcuserdetaildao.commitUpdateMap(user);
+
+        if (umeuserdao.saveUser(user)==0) statusMsg1 = lp.get(38) + "<br>";
+        else statusMsg1 = lp.get("systemerror") + "<br>";
+        
+        System.out.println("STATUS: " + statusMsg1);
+
+        //if (user.getActive()==0) {
+        System.out.println("Removing User from CACHE");
+        //UmePersonalCache.setUser(user);
+        umepersonalcache.delete(user.getParsedMobile());
+                
+        //System.out.println(UmePersonalCache)
+        //UmePersonalCache.delete("2374655699031LTU");
+        //UmeTempCache.activeUsers.remove(user.getUnique());
+        //    UmeTempCache.userCache.remove(user.getUnique());
+
+        //    System.out.println("ActiveUsers: " + UmeTempCache.activeUsers.get(user.getUnique()));
+        //    System.out.println("UserCache: " + UmeTempCache.userCache.get(user.getUnique()));
+        //}
+
+    }
+}
+
+if (!resetPwd.equals("")) {
+    
+    pwdType = aReq.get("p3type");
+    pwd = aReq.get("p3");
+    sendEmail = aReq.get("sendEmail");
+    sendSms = aReq.get("sendSms");
+    showOnScreen = aReq.get("sh_on_sc");
+    
+    if (sendEmail.equals("") && sendSms.equals("") && showOnScreen.equals("")) statusMsg2 = lp.get(4);
+    else {
+        
+        if (pwdType.equals("") || pwdType.equals("0")) pwd = Misc.generateLogin(6);
+        
+        if (pwd.length() >= 5 && pwd.length() <= 10) {
+            
+            System.out.println("Saving Password");
+            
+            user.updateMap("password", pwd);
+            umeuserdao.commitUpdateMap(user);
+            user.clearUpdateMap();
+            System.out.println("Removing User from CACHE");
+            umepersonalcache.delete(user.getParsedMobile());
+
+                
+            if (!sendEmail.equals("")) {
+
+                if (SdcMisc.validateEmail(user.getEmail())) {
+
+                    String emailfrom = System.getProperty("smtp_default_from");
+
+                    String emailsubject = lp.get("passwordreset");
+
+                    String emailbody = lp.get("PASSWORD_RESET_EMAIL");
+                    emailbody = SdcMisc.replaceChars(emailbody, "<login>", user.getLogin());
+                    emailbody = SdcMisc.replaceChars(emailbody, "<password>", user.getPassword());
+                    emailbody = SdcMisc.replaceChars(emailbody, "<domain-name>", System.getProperty(user.getDomain() + "_name"));
+
+                    System.out.println("emailfrom: "+ emailfrom + ": " + user.getEmail());
+
+                    if (Smtp.sendHtml(emailfrom,"", user.getEmail()    , emailsubject, emailbody, "","")) {
+                        statusMsg2 += lp.get(5) + "<br>";
+                    }
+                    else statusMsg2 += lp.get(6) + "<br>";
+                }
+                else statusMsg2 += lp.get(7) + "<br>";
+            }
+            if (!sendSms.equals("")) {
+
+                if (!user.getParsedMobile().equals("")) {
+                    
+                    String msg = lp.get("PASSWORD_RESET_SMS");
+                    msg = Misc.replaceChars(msg, "<login>", user.getLogin());
+                    msg = Misc.replaceChars(msg, "<password>", user.getPassword());
+                    msg = Misc.replaceChars(msg, "<domain-name>", System.getProperty(user.getDomain() + "_name"));
+
+                    System.out.println(user.getParsedMobile());
+
+                    OutgoingSmsMsg oSms = new OutgoingSmsMsg(aReq, application);
+                    oSms.setToNumber(user.getParsedMobile());
+                    oSms.setMsgBody(msg);
+                    oSms.setCostPerMsg(0);
+
+                    String smsStatus = oSms.send();
+                    System.out.println("SMS_STATUS: " + smsStatus);
+
+                    if (smsStatus.indexOf("OK_")>-1) { statusMsg2 += lp.get(8) + "<br>"; } else { statusMsg2 += lp.get(9) + "<br>"; }
+
+                } else { statusMsg2 += lp.get(10) + "<br>"; }
+            }
+
+            if (!showOnScreen.equals("")) {
+                statusMsg2 += lp.get(11) + " " + pwd + "<br>";
+            }
+            
+        } else { statusMsg2 = lp.get(13); }
+    }
+}
+
+int cs=4;
+String bgColor="#EEEEEE";
+%>

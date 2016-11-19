@@ -1,0 +1,68 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeLanguagePropertyDao langpropdao=null;
+UmeSmsAccountDao smsaccountdao=null;
+UmeTempCache umesdc=null;
+try{
+    ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+    ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+    langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+    smsaccountdao=(UmeSmsAccountDao) ac.getBean("umesmsaccountdao");
+    umesdc=(UmeTempCache) ac.getBean("umesdc");
+}
+catch(Exception e){}
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+String statusMsg = "";
+
+UmeDomain sdcd= null;
+SdcLanguage sdcl = null;
+String key = "";
+String value = "";
+String dmName = "";
+String lngCode = ""; 
+String smsNumber = "";
+
+String name = aReq.get("name");
+String dmid = aReq.get("dmid");
+String lang = aReq.get("lng").toLowerCase();
+String sms = aReq.get("sms");
+String add = aReq.get("add");
+
+if (!add.equals("")) {
+    
+    if (name.equals("")) statusMsg = "Please type in Sms Account name.";
+    else if (dmid.equals("") && lang.equals("")) statusMsg = "Please select at least either Domain or Country";
+    else {
+    
+        smsaccountdao.addAccount(dmid, lang, sms, name);
+       
+    }
+}
+
+java.util.List<UmeDomain> dmlist = umesdc.getDomainList();
+java.util.List<SdcLanguage> langlist = umesdc.getLanguageList();
+
+Map<String,String> map = umesdc.getSmsAccountMap();
+
+System.out.println("LLLANG : " + map.size());
+
+%>

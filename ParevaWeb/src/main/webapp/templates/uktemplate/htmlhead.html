@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>{{websitetitle}}</title>
+<link href="{{contenturl}}/lib/css/default.css?v=0.1.17" rel="stylesheet" type="text/css">
+<link href="{{contenturl}}/lib/css/slick.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+body {
+	margin-top: 0px;
+	background-image: url();
+}
+</style>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js" type="text/javascript"></script>
+<script src="{{contenturl}}/lib/js/interface.js" type="text/javascript"></script>
+<script src="{{contenturl}}/lib/js/slick.min.js" type="text/javascript"></script>
+<script src="{{contenturl}}/lib/js/carousel-pfi.js" type="text/javascript"></script>
+<script src="{{contenturl}}/lib/js/divArrangement.js" type="text/javascript"></script>
+<script src="{{contenturl}}/lib/js/ajax_call.js" type="text/javascript"></script>
+ <script type="text/javascript">
+	function init() {
+            
+var nameEQ = name + "=";
+		var ca = document.cookie.split(';');
+
+		var x, y;
+
+		for ( var i = 0; i < ca.length; i++) {
+			var c = ca[i];
+
+			x = c.substr(0, ca[i].indexOf("="));
+
+			try{
+                           
+				document.getElementById(x.trim()).style.display = "none";
+			}catch(ae){
+			 
+			}
+ 
+		} 
+	}
+	
+	function addcookiesforimi(code) {
+
+		try {
+			document.getElementById(code).style.display = "none";
+			 
+		} catch (ae) {
+		}
+
+		var date = new Date();
+		date.setTime(date.getTime() + (60 * 60 * 1000));
+		var expires = "; expires=" + date.toGMTString();
+		document.cookie = code + "=" + code + expires + "; path=/";
+		
+	}
+	
+	window.onload = init;
+</script>
+
+<script>
+var _prum = [['id', '54ad0087abe53d0e65226d40'],
+             ['mark', 'firstbyte', (new Date()).getTime()]];
+(function() {
+    var s = document.getElementsByTagName('script')[0]
+      , p = document.createElement('script');
+    p.async = 'async';
+    p.src = '//rum-static.pingdom.net/prum.min.js';
+    s.parentNode.insertBefore(p, s);
+})();
+</script>
+
+</head>

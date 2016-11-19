@@ -1,0 +1,82 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser umeuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeTempCache umesdc=null;
+UmeLanguagePropertyDao langpropdao=null;
+UmeCategoryDao umecategorydao=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+umesdc=(UmeTempCache) ac.getBean("umesdc");
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+umecategorydao=(UmeCategoryDao) ac.getBean("umecategorydao");
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+String statusMsg="";
+
+UmeCategory item = null;
+
+String sort = aReq.get("sort", "cat_index");
+String namesort = "";
+String indexsort = "";
+namesort = sort.equals("cat_name") ? "cat_name_desc" : "cat_name";
+indexsort = sort.equals("cat_index") ? "cat_index_desc" : "cat_index";
+
+String addName = "";
+String add = aReq.get("add");
+String delete = aReq.get("delete");
+
+if (!add.equals("")) {
+	
+    addName = aReq.get("addName");
+    if (addName.equals("")) statusMsg = lp.get(5);
+    else {
+        item = new UmeCategory();
+        item.setName(addName);
+        umecategorydao.addItem(item);
+        
+        umecategorydao.initializeCategories();
+
+        statusMsg = lp.get(1);
+    }
+    
+}
+else if (!delete.equals("")) {
+    Enumeration e = request.getParameterNames();
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("del_")) {
+            umecategorydao.deleteItem(elem.substring(4));
+        }
+    }
+    umecategorydao.initializeCategories();
+}
+
+
+java.util.List<UmeCategory> list = umesdc.getCategoryList();
+Collections.sort(list, new SdcComparator(sort));
+
+%>

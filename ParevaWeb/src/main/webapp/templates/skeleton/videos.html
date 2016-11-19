@@ -1,0 +1,206 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{websiteTitle}}</title>
+<style>
+*{
+	margin:0;
+	padding:0;
+}
+body{
+			background-image:url(images/bg.jpg);
+			color:#FFF;
+			font-family:Arial, Helvetica, sans-serif;
+}
+.clear{ clear:both;}
+.wrap{
+	width:920px;
+		height:200px;
+		
+	
+		margin: 10px auto;
+		
+}
+.banner{
+	margin:10px auto;
+}
+.banner images{
+	width:100%;
+}
+.video {
+	display:block;
+	float:left;
+	width:200px;
+	margin:15px 15px;
+	
+}
+.video span{
+	display:block;
+}
+.video span.title{
+	font-weight:800;
+	font-weight:800;
+}
+
+@media only screen and (max-width: 980px) {
+	.wrap{
+		width:920px;
+		height:200px;
+				margin: 10px auto;
+				
+		
+	}
+	.banner{
+	margin:10px auto;
+}
+}
+
+@media only screen and (max-width: 620px) {
+	.wrap{
+		width:100%;
+		margin: 5px auto;
+	
+						
+	}
+	.wrap .logo images{
+		width:100%;
+	}
+	.wrap .banner images{
+	margin:3px auto;
+	width:100%
+}
+.video {
+	width:40%;
+	margin:5px 5%;
+	
+}
+}
+@media only screen and (max-width: 480px) {
+	.wrap{
+		width:100%;
+		margin: 5px auto;				
+						
+	}
+	.wrap .logo images{
+		width:100%;
+		margin: 5px auto;
+	}
+		.wrap .banner images{
+	margin:2px auto;
+	width:100%
+}
+.video {
+	
+	width:90%;
+   
+	
+	
+}
+.video span images{
+	width:100%;
+	
+}
+	
+}
+
+@media only screen and (max-width: 240px) {
+	.wrap{
+				width:100%;
+				overflow:hidden;
+	}
+	
+	.wrap .logo images{
+		width:100%;
+	}
+		.wrap .banner images{
+	margin:1px auto;
+	width:100%
+}
+}
+</style>
+
+</head>
+
+<body>
+<div id="pgframe" align="center">
+<div class="container">
+    <pre>  </pre>
+    {% include 'header' %}
+</div</div>
+
+<div class="item_grey2" align="left">
+      
+    <form action="{{fileName}}.jsp" style="margin:0px; padding:0px;">
+    <input type="text" size="8" name="ss" value="{{search}}"/>&nbsp;
+    <input type="hidden" name="bg" value="{{bg}}"/>
+    <input type="hidden" name="fnt" value="{{font}}"/>
+    <input type="submit" value="Search"/>
+    </form>
+   
+</div>
+<div class="title" align="left"><b>{{title}}</b></div> 
+
+{% for video in videoList %}
+    
+	{% if handset.xhtmlProfile == 4 %}
+		<a href="videodetail.jsp?unq={{video.item.unique}}&amp;{{params}}">
+				<div id="body-wrapper" {{style1}} >
+					<div class="video-box">
+						<div class="item-box-picture">
+							<div class="image-wrap"><img src="{{video.img}}" width="{{video.iw}}" height="{{video.ih}}" /></div>
+						</div>
+						<div class="item-box-details">
+						<span class="video-title">{{ video.description }}</span>
+							<ul class="stats">
+								<li>{{video.viewsNumber}} Views &nbsp;&nbsp;{{video.ratingNumber}}% Like </li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</a>
+
+	{% else %}
+		<div class="item_video" align="left" {{style1}} >
+				<table cellpadding="2" cellspacing="0" border="0" width="{{handset.fullWidth}}">
+					<tr>
+						<td valign="top" align="left">
+						{% if video.img != " " %}
+								<img src="{{video.img}}" width="{{video.iw}}" height="{{video.ih}}" />
+						{% endif %}
+						</td>
+						<td valign="top">
+						<a href="videodetail.jsp?unq={{video.item.unique}}&amp;{{params}}">{{ video.description }}</a><br>
+						<span class="rating">{{video.viewsNumber}} Views &nbsp;&nbsp;{{video.ratingNumber}}% Like<span>
+						</td>
+					</tr>
+				</table>
+			</div> 
+	
+	{% endif %}
+	
+{% endfor %}
+
+{% if pageCount > 1 %}
+<div class="item_grey1" align="left">
+{% if curPage > 1 %}
+    	<a href="videos.jsp?{{params2}}&amp;ind={{((curPage-2)*maxCount)}}&amp;max={{max}}&amp;bg={{bg}}&amp;fnt={{font}}">&lt;&lt;{{previous}}</a>&nbsp;&nbsp;
+	{% endif %}
+	
+	{% if (pageCount-curPage)>0 %}
+    
+		<a href="videos.jsp?{{params2}}&amp;ind={{(curPage*maxCount)}}&amp;max={{max}}&amp;bg={{bg}}&amp;fnt={{font}}">{{next}}&gt;&gt;</a>
+	{% endif %}
+		
+</div>
+{% endif %}
+<div class="item" align="left">
+&#94; <a href="#pgframe"><span class="item">{{up}}</span></a><br/>
+</div>
+
+
+{% include 'footer' %}
+
+</body>
+</html>

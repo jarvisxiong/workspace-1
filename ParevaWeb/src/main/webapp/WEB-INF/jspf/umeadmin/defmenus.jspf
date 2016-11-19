@@ -1,0 +1,68 @@
+<%@include file="coreimport.jspf"%>
+
+<%
+//***************************************************************************************************
+ SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+UmeUserDao umeuserdao=null;
+UmeTempCache anyxsdc=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+umeuserdao=(UmeUserDao) ac.getBean("umeuserdao");
+anyxsdc=(UmeTempCache) ac.getBean("umesdc");
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+
+
+
+if(sdcuser==null)
+    sdcuser=umeuserdao.getUser((String)request.getAttribute("sdc_user_unique"));
+
+System.out.println("DEFMENUS.jsp sdcUser VAlue == "+sdcuser.getLogin()+" sdcuserGroup == "+sdcuser.getUserGroup());
+
+String domain = dmn.getUnique();
+String langCode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+//LangProps lp = LangProps.getFromContext(service.getUnique(), fileName, langCode, domain, application, true);
+//***************************************************************************************************
+
+int aGrp = 0;
+
+int sLevel = 0;
+
+Vector cats = (Vector) Misc.cxt.getAttribute(domain + "_cats");
+String[][] services = (String[][]) Misc.cxt.getAttribute("services");
+HashMap rootMenus = (HashMap) Misc.cxt.getAttribute("rootMenus");
+HashMap serviceMenus = (HashMap) Misc.cxt.getAttribute("serviceMenus");
+
+String loginText = "Logout";
+if (langCode.equals("fi")) loginText = "Kirjaudu Ulos";
+
+UmeCategory sdccat = null;
+SdcService sdcsrvc = null;
+SdcPackage sdcpack = null;
+SdcServiceMenu sdcmenu = null;
+java.util.List<SdcServiceMenu> menulist = null;
+
+UmeUserGroup sdcgroup = anyxsdc.getUserGroupMap().get(sdcuser.getUserGroup());
+
+Collections.sort(anyxsdc.getCategoryList(), new SdcComparator("cat_index"));
+Collections.sort(anyxsdc.getServiceList(), new SdcComparator("srvc_index"));
+
+String contenturl="http://pareva.umelimited.com";
+
+%>

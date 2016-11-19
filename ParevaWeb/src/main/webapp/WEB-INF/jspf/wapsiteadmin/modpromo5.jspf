@@ -1,0 +1,228 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+
+<%!private Map getUpdatedCategoryMap(Map tempCategoryMap,
+			CategoryPojo currentCategory) {
+
+		if (currentCategory != null
+				&& currentCategory.getParentCategoryId() != null
+				&& tempCategoryMap != null) {
+			CategoryPojo parentCategory = (CategoryPojo) tempCategoryMap
+					.get(currentCategory.getParentCategoryId());
+			if (parentCategory != null) {
+				HashMap subCategoryMap = parentCategory.getSubCategoryMap();
+				if (subCategoryMap != null) {
+					subCategoryMap.put(currentCategory.getCategoryId(),
+							currentCategory);
+				} else {
+					subCategoryMap = new LinkedHashMap();
+					subCategoryMap.put(currentCategory.getCategoryId(),
+							currentCategory);
+				}
+				parentCategory.setSubCategoryMap(subCategoryMap);
+				tempCategoryMap.put(parentCategory.getCategoryId(),
+						parentCategory);
+				if (!parentCategory.getParentCategoryId().equals("root")) {
+					getUpdatedCategoryMap(tempCategoryMap, parentCategory);
+				}
+			}
+			return tempCategoryMap;
+		} else {
+			return null;
+		}
+	}%>
+
+
+
+<%
+	//***************************************************************************************************
+	AdminRequest aReq = new AdminRequest(request);
+	String uid = aReq.getUserId();
+	String ugid = aReq.getUserGroup();
+	String anyxSrvc = aReq.getAnyxService();
+	String domain = aReq.getDomain();
+	String lang = aReq.getLanguage();
+	String stylesheet = System.getProperty("stylesheet_" + lang);
+	String pageEnc = System.getProperty("lang_" + lang);
+
+	if (pageEnc == null)
+		pageEnc = "ISO-8859-1";
+	response.setContentType("text/html; charset=" + pageEnc);
+
+	String fileName = "modpromo5";
+
+	System.out.println("domainUnique = " + domain);
+	//***************************************************************************************************
+
+	String imgFormat = "gif";
+
+	String client = aReq.get("clnt");
+	String srvc = aReq.get("srvc");
+	String cmd = aReq.get("cmd");
+	String ss = aReq.get("ss");
+	String updpic = Misc.hex8Decode(aReq.get("updpic"));
+	String pic = aReq.get("pic");
+	String regionid = aReq.get("regionid");
+	domain = aReq.get("dm");
+	String dm = Misc.getCookie("_MXMDOMAINUNIQUE", request);
+	String subpage = Misc.getCookie("_MXMSUBPAGEUNIQUE", request);
+
+	System.out.println("Domain(dm) = " + domain);
+
+	if (dm.equals("") || srvc.equals("") || cmd.equals("")
+			|| client.equals("")) {
+		out.println("domain / service / cmd / client missing");
+		return;
+	}
+
+	Query query = null, query2 = null;
+	Transaction trans = dbsession.beginTransaction();
+	String sqlstr = "";
+	String statusMsg = "";
+	String statusMsg2 = "";
+	String[] props = null;
+	String[] pprops = null;
+	String[] gprops = null;
+	String[] dprops = null;
+
+	String promoUnique = "";
+	String game = "";
+	boolean resample = false;
+	String srvcTitle = "";
+	String domainName = ((UmeDomain) SdkTempCache.domainMap.get(dm))
+			.getName();
+
+	java.util.List categoryList = new ArrayList();
+
+	java.util.List activeCategories = new ArrayList();
+
+	if (cmd.equals("videocategory"))
+		srvcTitle = "Video Category";
+
+	sqlstr = "select aName1, i.aUnique as aUnique, aParent from itemCategories i, clientServices c where i.aClassification=c.classification"
+			+ " and i.aContentType=c.contentType and c.aUnique='"
+			+ srvc + "' order by aParent desc,aName1 asc";
+	System.out.println("categoryquery " + sqlstr);
+	query = dbsession.createSQLQuery(sqlstr).addScalar("aName1")
+			.addScalar("aUnique").addScalar("aParent");
+	java.util.List catres = query.list();
+	Map tempCategoryMap = new LinkedHashMap();
+	java.util.List tempParentCategoryList = new ArrayList();
+	for (Object o : catres) {
+		Object[] row = (Object[]) o;
+		CategoryPojo category = new CategoryPojo();
+		category.setCategoryName(String.valueOf(row[0]));
+		category.setCategoryId(String.valueOf(row[1]));
+		category.setParentCategoryId(String.valueOf(row[2]));
+		String categoryUnique = String.valueOf(row[1]);
+		String parentUnique = String.valueOf(row[2]);
+		tempCategoryMap.put(categoryUnique, category);
+		if (!parentUnique.equals("root")) {
+			tempCategoryMap = getUpdatedCategoryMap(tempCategoryMap,
+					category);
+		}
+
+	}
+
+	Map parentCategoryMap = new LinkedHashMap();
+	if (tempCategoryMap != null) {
+		Iterator it = tempCategoryMap.keySet().iterator();
+		while (it.hasNext()) {
+			String key = it.next().toString();
+			CategoryPojo categoryPojo = (CategoryPojo) tempCategoryMap
+					.get(key);
+			if (categoryPojo.getParentCategoryId().equals("root")) {
+				parentCategoryMap.put(categoryPojo.getCategoryId(),
+						categoryPojo);
+			}
+		}
+	}
+
+	request.setAttribute("categoryMap", parentCategoryMap);
+
+	sqlstr = "select aCategory from selectedCategories sc where sc.aServiceUnique='"
+			+ srvc + "'";
+	System.out.println(sqlstr);
+	query = dbsession.createSQLQuery(sqlstr).addScalar("aCategory");
+	java.util.List activCats = query.list();
+	for (Object o : activCats) {
+		activeCategories.add(o.toString());
+	}
+
+	Iterator<CategoryPojo> it = tempCategoryMap.values().iterator();
+	while (it.hasNext()) {
+		CategoryPojo category = it.next();
+		String categoryUnique = aReq.get(category.getCategoryId());
+
+		boolean exist = false;
+		for (int j = 0; j < activeCategories.size(); j++) {
+			if (categoryUnique.equals(activeCategories.get(j))) {
+				exist = true;
+				break;
+			}
+		}
+		if (!exist && !categoryUnique.equals("")) {
+			sqlstr = "insert into selectedCategories (aUnique,aServiceUnique,aDomainUnique,aClientUnique,aCategory) values"
+					+ "('"
+					+ Misc.generateUniqueId()
+					+ "','"
+					+ srvc
+					+ "','"
+					+ dm
+					+ "','"
+					+ client
+					+ "','"
+					+ categoryUnique + "')";
+
+			System.out.println(sqlstr);
+			query = dbsession.createSQLQuery(sqlstr);
+			int status = query.executeUpdate();
+			activeCategories.add(categoryUnique);
+
+		}
+		System.out.println("categoryUnique = " + categoryUnique);
+	}
+
+	if (ss.equals("1")) {
+		Iterator<CategoryPojo> iterator = tempCategoryMap.values()
+				.iterator();
+		while (iterator.hasNext()) {
+			CategoryPojo category = iterator.next();
+			String categoryUnique = aReq.get(category.getCategoryId());
+			System.out.println("Category Name = "
+					+ category.getCategoryName());
+			System.out.println("Category Unique = " + categoryUnique);
+			sqlstr = "select count(*) as count from selectedCategories sc where sc.aServiceUnique='"
+					+ srvc
+					+ "' and sc.aCategory='"
+					+ category.getCategoryId() + "'";
+
+			int count = 0;
+			query = dbsession.createSQLQuery(sqlstr).addScalar("count");
+			java.util.List countList = query.list();
+
+			for (Object o1 : countList) {
+				String row1 = o1.toString();
+				count = Integer.parseInt(String.valueOf(row1));
+				System.out.println("COUNT : " + count);
+			}
+
+			if (categoryUnique.equals("") && count > 0) {
+				//	if(categories.equals("")){
+				sqlstr = "delete from selectedCategories where aCategory='"
+						+ category.getCategoryId()
+						+ "' and aServiceUnique='" + srvc + "'";
+
+				System.out.println(sqlstr);
+				query = dbsession.createSQLQuery(sqlstr);
+				int status = query.executeUpdate();
+				activeCategories.remove(category.getCategoryId());
+			}
+		}
+	}
+
+	request.setAttribute("activeCategories", activeCategories);
+	trans.commit();
+	dbsession.close();
+%>

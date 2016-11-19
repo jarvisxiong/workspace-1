@@ -1,0 +1,81 @@
+body {margin:0; padding:0; background-image:url(/images/cmsadmin/left/bg.jpg); background-repeat:repeat-x; background-color:#061b2f; font-family:Arial, Helvetica, sans-serif; color:#3a84c1; font-size:13px; background-attachment:fixed;}
+h1,h2,h3,h4,h5,h6 {margin:0; padding:0;}
+a {outline:0;}
+img {border:0;}
+
+.clearFix {clear:both; line-height:0; font-size:0; height:0; display:block;}
+.left {float:left;}
+.right {float:right;}
+/*-------------------------------------------------------------------- Right ------------------------------------------------------------------------------*/
+
+#content {margin:20px 0 50px 5px; background-color:#fff;}
+#content-top {background-image:url(/images/cmsadmin/right/top.gif); height:5px; background-repeat:no-repeat;}
+#content-bottom {background-image:url(/images/cmsadmin/right/bottom.gif); height:5px; background-repeat:no-repeat; margin:10px 0 0 0;}
+
+.header {color:#5ca8e7; font-size:18px; font-weight:bold; display:block; padding:0 0 15px 0; border-bottom:1px dotted #d5d5d5; margin:30px 70px 0 35px; width:90%;}
+
+.box {height:34px; background-image:url(/images/cmsadmin/right/box-bg.gif); background-repeat:repeat-x; color:#2c7bbc; font-size:14px; font-weight:bold; float:left; margin:20px 0 2px 35px;}
+.box-left {background-image:url(/images/cmsadmin/right/box-left.gif); width:5px; height:34px; float:left;}
+.box-right {background-image:url(/images/cmsadmin/right/box-right.gif); width:5px; height:34px; float:right;}
+.box span {padding:10px 0 0 0; display:block; margin:0 auto; text-align:center;}
+
+.listBox {float:left; background-image:url(/images/cmsadmin/right/_bg_table.gif); background-repeat:repeat-x; margin:0 70px 0 35px; width:90%; border:1px solid #eaeaea; background-position:bottom;}
+.listBox td {border-bottom:1px dotted #d2d2d2; padding:5px 15px;}
+.listBox td.last {border:0;}
+.small {font-size:12px; color:#3380bf;}
+
+.btGray {height:28px; background-image:url(/images/cmsadmin/right/btGray.gif); background-repeat:repeat-x; color:#666; font-size:11px; float:right;}
+.btGray-left {background-image:url(/images/cmsadmin/right/btGray-left.gif); width:4px; height:28px; float:left;}
+.btGray-right {background-image:url(/images/cmsadmin/right/btGray-right.gif); width:4px; height:28px; float:right;}
+.btGray span {padding:8px 0 0 0; display:block; margin:0 auto; text-align:center;}
+.btGray span a {color:#666; text-decoration:none; display:block;}
+.btGray span a:hover {text-decoration:underline;}
+
+.btBlue {height:28px; background-image:url(/images/cmsadmin/right/btBlue.gif); background-repeat:repeat-x; color:#2c7bbc; font-size:11px; float:right; margin:0 0 0 5px;}
+.btBlue-left {background-image:url(/images/cmsadmin/right/btBlue-left.gif); width:4px; height:28px; float:left;}
+.btBlue-right {background-image:url(/images/cmsadmin/right/btBlue-right.gif); width:4px; height:28px; float:right;}
+.btBlue span {padding:8px 0 0 0; display:block; margin:0 auto; text-align:center;}
+.btBlue span a {color:#2c7bbc; text-decoration:none; display:block;}
+.btBlue span a:hover {text-decoration:underline;}
+
+.green {color:#59ab16;}
+.orange {color:#f46700; font-weight:bold;}
+
+div.btHolder {margin:5px 70px 0 35px; width:90%;}
+
+.bar {float:left; background-image:url(/images/cmsadmin/right/bar-bg.gif); background-repeat:repeat-x; margin:0 70px 2px 35px; width:90%; height:31px; color:#4b4b4b; font-size:12px; position:relative;}
+.bar-left {background-image:url(/images/cmsadmin/right/bar-left.gif); width:5px; height:31px; float:left; position:absolute; left:0;}
+.bar-right {background-image:url(/images/cmsadmin/right/bar-right.gif); width:5px; height:31px; float:right; position:absolute; right:0;}
+.bar td {padding:9px 10px;}
+
+.dark {color:#4b4b4b; font-size:12px;}
+
+.barB {float:left; background-image:url(/images/cmsadmin/right/barB-bg.gif); background-repeat:repeat-x; margin:0 70px 2px 35px; width:90%; height:45px; color:#3a84c1; font-size:12px; position:relative;}
+.barB-left {background-image:url(/images/cmsadmin/right/barB-left.gif); width:6px; height:45px; float:left; position:absolute; left:0;}
+.barB-right {background-image:url(/images/cmsadmin/right/barB-right.gif); width:6px; height:45px; float:right; position:absolute; right:0;}
+.barB td {padding:9px 10px; height:35px;}
+.barB .selectBox {width:150px; border:1px solid #ccc;}
+
+.textBox {width:164px; height:20px; background-image:url(/images/cmsadmin/right/bg-input.gif); padding:3px 0 0 0;}
+.textBox input {border:0; background-color:transparent; width:150px;}
+
+.textBox-long {width:272px; height:20px; background-image:url(/images/cmsadmin/right/bg-inputLong.gif); padding:3px 0 0 0;}
+.textBox-long input {border:0; background-color:transparent; width:252px; margin:0 0 0 10px;}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,199 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%><%
+
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser umeuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String lang = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+//***************************************************************************************************
+
+UmeLanguagePropertyDao langpropdao=null; 
+UmeTempCache umesdc=null;
+UmeUserDao umeuserdao=null;
+Misc misc=null;
+try{
+    ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+    ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+    langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+    umesdc=(UmeTempCache) ac.getBean("umesdc");
+    umeuserdao=(UmeUserDao) ac.getBean("umeuserdao");
+    misc=(Misc) ac.getBean("misc");
+    }
+    catch(Exception e){
+        e.printStackTrace();
+    }
+
+
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+
+String search = aReq.get("search");
+String sstr = aReq.get("sstr");
+String stype = aReq.get("stype");
+int index = Integer.parseInt(aReq.get("index", "0"));
+String params = "search=" + search + "&sstr=" + sstr + "&stype=" + stype + "&index=" + index;
+
+
+UmeUserGroup umegroup = null;
+SdcLanguage sdclang = null;
+UmeDomain umedomain = null;
+
+//DBHandler dbH = (DBHandler) Misc.cxt.getAttribute("dbHandler");
+//String dbName = System.getProperty("dbName");
+//String srvcDb = System.getProperty("serviceDb");
+
+String error="";
+String statusMsg="";
+
+String saveButton = aReq.get("save");
+
+String dmid = aReq.get("dUnique");
+String lastName = aReq.get("aLastname");
+String firstName = aReq.get("aFirstname");
+String mobile1 = aReq.get("aMobile1");
+String phoneBrand1 = aReq.get("aPhoneBrand1");
+String phoneModel1="";
+String userGroup = aReq.get("aUserGroup");
+int secLevel = Integer.parseInt(aReq.get("aSecLevel","1"));
+int adminGroup = Integer.parseInt(aReq.get("aAdminGroup","0"));
+String email = aReq.get("aEmail");
+String prefLang = aReq.get("aPrefLang");
+String bySms = aReq.get("bySms");
+String byEmail = aReq.get("byEmail");
+
+String createAnyway = aReq.get("aw");
+
+boolean forceCreate=false;
+boolean smsSent=false;
+boolean emailSent=false;
+boolean dataSaved=false;
+
+
+if (saveButton.equals("Save & Send")) {
+	
+	if (userGroup.equals("")) error = lp.get(1) + "<br>";
+	if (dmid.equals("")) error = lp.get(1) + "<br>";
+	if (lastName.equals("")) error += lp.get(2) + "<br>";
+	if (firstName.equals("")) error += lp.get(3) + "<br>";
+	if (email.equals("") && !byEmail.equals("")) error += lp.get(4) + "<br>";
+	if (mobile1.equals("") && !bySms.equals("")) error += lp.get(5) + "<br>";
+	
+	if (!misc.validateTel(mobile1)) { error += "<br>" + lp.get(6); }
+	
+	String parsedMobile1 = misc.parseMobileNumber(mobile1);
+	if (!parsedMobile1.equals("") 
+		
+		&& misc.namesExist("users", parsedMobile1, "aParsedMobile1", dmid, "aDomain")) {
+		error += lp.get(7) + "<br>";
+	}
+	
+	if (!email.equals("") &&
+		
+		misc.namesExist("users", email, "aEmail", dmid, "aDomain")) {
+	
+		error += lp.get(41);
+	}
+	
+	if (error.equals("")) {
+            
+		boolean validLogin=false;
+		String login = "";
+		String unique = misc.generateUniqueId();
+		
+		for (int i=0; i<50; i++) {
+			login = misc.generateLogin(6);
+			
+			if (!misc.namesExist("users", login, "aLogin", dmid, "aDomain")) { validLogin=true; break; }
+		}
+		
+		if (validLogin) {
+			if (!createAnyway.equals("11") 
+                            
+					&& misc.namesExist("users", lastName, "aLastName", dmid, "aDomain")
+                    && misc.namesExist("users", firstName, "aFirstName", dmid, "aDomain")) {
+		
+				forceCreate=true;
+				error +=  lp.get(8) + firstName + " " + lastName + lp.get(9) + "<br>"
+					+ lp.get(10);
+			}
+			else {
+				String pwd =  misc.generateLogin(6);
+                                
+                                UmeUser user = new UmeUser();
+                                user.setLastName(lastName);
+                                user.setFirstName(firstName);
+                                user.setNickName(login);
+                                user.setEmail(email);
+                                user.setMobile(mobile1);
+                                user.setLogin(login);
+                                user.setPassword(pwd);
+                                user.setUserGroup(userGroup);
+                                user.setDomain(dmid);
+                                user.setLanguage(prefLang);
+                                user.setAdminGroup(adminGroup);
+                                user.setSecLevel(secLevel);
+                                user.setActive(1);
+                                      
+                                String stat = umeuserdao.addNewUser(user);
+				
+                           
+                                if (stat.equals("")) {
+					statusMsg = lp.get(11);
+					
+					if (bySms.equals("1")) {
+                                                String msg = lp.get("USER_CREATED_SMS");
+						msg = misc.replaceChars(msg, "<login>", user.getLogin());
+						msg = misc.replaceChars(msg, "<password>", user.getPassword());
+						msg = misc.replaceChars(msg, "<domain-name>", System.getProperty(dmid + "_name"));
+												
+						OutgoingSmsMsg oSms = new OutgoingSmsMsg(aReq, application);
+						oSms.setToNumber(mobile1);
+						oSms.setMsgBody(msg);
+						oSms.setCostPerMsg(0);
+						
+						String smsStatus = oSms.send();
+						
+						if (smsStatus.indexOf("OK_")>-1) { smsStatus = lp.get(12); }
+						else { smsStatus = lp.get(13); }
+							
+						if (statusMsg.length()>0) statusMsg += "<br>";
+						statusMsg += smsStatus;
+						
+					}
+					if (byEmail.equals("1")) {
+
+                                            String emailfrom = System.getProperty("smtp_default_from");
+                                            String emailsubject = lp.get("passwordreset");
+
+                                            String emailbody = lp.get("USER_CREATED_EMAIL");
+                                            emailbody = misc.replaceChars(emailbody, "<login>", user.getLogin());
+                                            emailbody = misc.replaceChars(emailbody, "<password>", user.getPassword());
+                                            emailbody = misc.replaceChars(emailbody, "<domain-name>", System.getProperty(dmid + "_name"));
+
+                                            if (Smtp.sendHtml(emailfrom,"", user.getEmail()    , emailsubject, emailbody, "","")) {
+                                                statusMsg += lp.get(14) + "<br>";
+                                            }
+                                            else statusMsg += lp.get(15) + "<br>";
+					}
+				} else { error += lp.get(16); }
+			}
+		} else { error += lp.get(17); }
+	}
+	
+}
+
+int cs=4;
+String bgColor="#EEEEEE";
+%>

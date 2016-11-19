@@ -1,0 +1,441 @@
+<%@page import="ume.pareva.reload.ReloadEverything"%>
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser umeuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String lang = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeLanguagePropertyDao langpropdao=null;
+MobileClubDao mobileclubdao=null;
+UmeSmsKeywordDao umesmskeyworddao=null;
+UmeTempCache umesdc=null;
+UmeClubDetailsDao umeclubdetailsdao=null;
+ItemCategoryDao itemcategorydao=null;
+ReloadEverything reloadeverything=null;
+UmeClubFeatureDao clubfeature=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+mobileclubdao=(MobileClubDao) ac.getBean("mobileclubdao");
+umesmskeyworddao=(UmeSmsKeywordDao) ac.getBean("umesmskeyworddao");
+umesdc=(UmeTempCache) ac.getBean("umesdc");
+umeclubdetailsdao=(UmeClubDetailsDao) ac.getBean("umeclubdetailsdao");
+itemcategorydao=(ItemCategoryDao) ac.getBean("itemcategorydao");
+reloadeverything=(ReloadEverything) ac.getBean("reloadeverything");
+clubfeature=(UmeClubFeatureDao) ac.getBean("clubfeature");
+
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+
+
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+String unq = aReq.get("unq");
+String frequency="",freeday="",messagespoof="",companycode="";
+
+System.out.println("====Club Unique ==== "+unq);
+
+MobileClub item = UmeTempCmsCache.mobileClubMap.get(unq);
+
+System.out.println("REGION OF THIS CLUB IS "+item.getRegion());
+java.util.List clubList=mobileclubdao.getMobileClubByRegion(item.getRegion());
+java.util.List classificationList=itemcategorydao.getDistinctClassifications();
+
+if (item==null) { out.println("Could not find club item."); return; }
+
+Map<String,UmeClubDetails> clubdetailsmap =null;
+Map<String,java.util.List<UmeClubFeature>> clubFeaturesMap=null;
+
+if(UmeTempCmsCache.umeClubDetailsMap!=null) clubdetailsmap=UmeTempCmsCache.umeClubDetailsMap;
+else{
+    umeclubdetailsdao.initializeUmeClubDetails();
+    clubdetailsmap=UmeTempCmsCache.umeClubDetailsMap;
+}
+
+if(UmeTempCmsCache.umeClubFeaturesMap!=null) 
+	clubFeaturesMap=UmeTempCmsCache.umeClubFeaturesMap;
+else{
+	clubfeature.initializeUmeClubFeatures();
+	clubFeaturesMap=UmeTempCmsCache.umeClubFeaturesMap;
+}
+
+UmeClubDetails clubdetails=UmeTempCmsCache.umeClubDetailsMap.get(unq);
+java.util.List<UmeClubFeature> clubFeatures=UmeTempCmsCache.umeClubFeaturesMap.get(unq);
+System.out.println("====CLUBDETAILS DESCRIPTION ::>> "+clubdetails.toString());
+
+
+frequency=String.valueOf(clubdetails.getFrequency()).trim();
+freeday=clubdetails.getFreeDay().trim();
+messagespoof=clubdetails.getClubSpoof();
+companycode=clubdetails.getCompanyCode();
+
+
+SdcSmsKeyword sdckw = null;
+UmeDomain umedomain = null;
+String kw = "";
+
+System.out.println("CLUB: " + item);
+String mClubIn = "5327843147921CDS";
+
+String statusMsg = "";
+
+String save = aReq.get("save");
+
+System.out.println(UmeTempCmsCache.mobileClubsByNumber);
+
+String activePrimaryService="";
+String activeSecondaryService="";
+
+
+if (!save.equals("")) {
+System.out.println("Classification: "+aReq.get("classification"));
+    try {
+        String sisterClub = "";
+               
+        if(null!=aReq.get("classification") && !"".equalsIgnoreCase(aReq.get("classification")))
+        {
+            clubList=mobileclubdao.getMobileClubByRegionClassification(aReq.get("aRegion"), aReq.get("classification"));
+            if(!clubList.isEmpty()){
+            for(int i=0;i<clubList.size();i++) {						
+                MobileClub club=(MobileClub)clubList.get(i);
+		if(!item.getUnique().equals(club.getUnique())){
+			 if (!sisterClub.equals("")) sisterClub += "?";
+	            sisterClub += club.getUnique();
+                    /* sisterClub+=club.getUnique();
+                    if (!sisterClub.equals("")) sisterClub += "?";                                       
+                     */}
+                }
+                                                    
+            }
+         }
+        if(!aReq.get("aClubName").equals(""))
+        item.setClubName(aReq.get("aClubName"));
+        
+        if(!aReq.get("aWebmasterName").equals(""))
+        item.setWebmasterName(aReq.get("aWebmasterName"));
+        
+        if(!aReq.get("aName").equals(""))
+        item.setName(aReq.get("aName"));
+        
+        if(!aReq.get("aSmsNumber").equals(""))
+        item.setSmsNumber(aReq.get("aSmsNumber"));
+        
+        if(!aReq.get("aBookmarkName").equals(""))
+        item.setBookmarkName(aReq.get("aBookmarkName"));
+        
+        if(!aReq.get("aActive").equals(""))
+        item.setActive(Integer.parseInt(aReq.get("aActive")));
+        
+        if(!aReq.get("aType").equals(""))
+        item.setType(aReq.get("aType").toLowerCase());
+        
+        if(!aReq.get("aPeriod").equals(""))
+        item.setPeriod(Integer.parseInt(aReq.get("aPeriod")));
+        
+        if(!aReq.get("aCreditAmount").equals(""))
+        item.setCreditAmount(Integer.parseInt(aReq.get("aCreditAmount")));
+        
+        if(!aReq.get("aBillingHour").equals(""))
+        item.setBillingHour(Integer.parseInt(aReq.get("aBillingHour", "0")));
+        
+        if(!aReq.get("aBillingMinute").equals(""))
+        item.setBillingMinute(Integer.parseInt(aReq.get("aBillingMinute", "0")));
+        
+        if(!aReq.get("aOtpSoneraId").equals(""))
+        item.setOtpSoneraId(aReq.get("aOtpSoneraId"));
+        
+        if(!aReq.get("aOtpTelefiId").equals(""))
+        item.setOtpTelefiId(aReq.get("aOtpTelefiId"));
+        
+        if(!aReq.get("aOtpServiceName").equals(""))
+        item.setOtpServiceName(aReq.get("aOtpServiceName"));
+
+
+        if(!aReq.get("aPrice").equals(""))
+        item.setPrice(Double.parseDouble(aReq.get("aPrice", "0")));
+        
+        if(!aReq.get("aMasterTones").equals(""))
+        item.setMasterTones(Integer.parseInt(aReq.get("aMasterTones", "0")));
+        
+        if(!aReq.get("aPolyTones").equals(""))
+        item.setPolyTones(Integer.parseInt(aReq.get("aPolyTones", "0")));
+        
+        if(!aReq.get("aTrueTones").equals(""))
+        item.setTrueTones(Integer.parseInt(aReq.get("aTrueTones", "0")));
+        
+        if(!aReq.get("aFunTones").equals(""))
+        item.setFunTones(Integer.parseInt(aReq.get("aFunTones", "0")));
+        
+        if(!aReq.get("aBgImages").equals(""))
+        item.setBgImages(Integer.parseInt(aReq.get("aBgImages", "0")));
+        
+        if(!aReq.get("aProImages").equals(""))
+        item.setProImages(Integer.parseInt(aReq.get("aProImages", "0")));
+        
+        if(!aReq.get("aJavaGames").equals(""))
+        item.setJavaGames(Integer.parseInt(aReq.get("aJavaGames", "0")));
+        
+        if(!aReq.get("aProGames").equals(""))
+        item.setProGames(Integer.parseInt(aReq.get("aProGames", "0")));
+        
+        if(!aReq.get("aVideos").equals(""))
+        item.setVideos(Integer.parseInt(aReq.get("aVideos", "0")));
+        
+        if(!aReq.get("aAnims").equals(""))
+        item.setAnims(Integer.parseInt(aReq.get("aAnims", "0")));
+        
+        if(!aReq.get("aMasterCredits").equals(""))
+        item.setMasterCredits(Integer.parseInt(aReq.get("aMasterCredits", "0")));
+        
+        if(!aReq.get("aPolyCredits").equals(""))
+        item.setPolyCredits(Integer.parseInt(aReq.get("aPolyCredits", "0")));
+        
+        if(!aReq.get("aTrueCredits").equals(""))
+        item.setTrueCredits(Integer.parseInt(aReq.get("aTrueCredits", "0")));
+        
+        if(!aReq.get("aFunCredits").equals(""))
+        item.setFunCredits(Integer.parseInt(aReq.get("aFunCredits", "0")));
+        
+        if(!aReq.get("aBgImageCredits").equals(""))
+        item.setBgImageCredits(Integer.parseInt(aReq.get("aBgImageCredits", "0")));
+        
+        if(!aReq.get("aProImageCredits").equals(""))
+        item.setProImageCredits(Integer.parseInt(aReq.get("aProImageCredits", "0")));
+        
+        if(!aReq.get("aJavaGameCredits").equals(""))
+        item.setJavaGameCredits(Integer.parseInt(aReq.get("aJavaGameCredits", "0")));
+        
+        if(!aReq.get("aProGameCredits").equals(""))
+        item.setProGameCredits(Integer.parseInt(aReq.get("aProGameCredits", "0")));
+        
+        if(!aReq.get("aVideoCredits").equals(""))
+        item.setVideoCredits(Integer.parseInt(aReq.get("aVideoCredits", "0")));
+        
+        if(!aReq.get("aAnimCredits").equals(""))
+        item.setAnimCredits(Integer.parseInt(aReq.get("aAnimCredits", "0")));
+        
+        if(!aReq.get("aKeepOldCredits").equals(""))
+        item.setKeepOldCredits(Integer.parseInt(aReq.get("aKeepOldCredits", "0")));
+        
+        if(!aReq.get("aOptIn").equals(""))
+        item.setOptIn(Integer.parseInt(aReq.get("aOptIn", "0")));
+        
+        if(!aReq.get("aAqmAbo").equals(""))
+        item.setAqmAbo(Integer.parseInt(aReq.get("aAqmAbo", "0")));
+        
+        if(!aReq.get("aCurrency").equals(""))
+        item.setCurrency(aReq.get("aCurrency").toUpperCase());
+        
+        if(!aReq.get("aRegion").equals(""))
+        item.setRegion(aReq.get("aRegion").toUpperCase());
+        
+        if(!aReq.get("aSmsExt").equals(""))
+        item.setSmsExt(aReq.get("aSmsExt"));
+        item.setSisterClubs(sisterClub);
+        item.setClassification(aReq.get("classification"));
+        
+        if(!aReq.get("aWapDomain").equals("")){
+        String newwap = aReq.get("aWapDomain");
+        
+        
+        if (!newwap.equalsIgnoreCase("select") && UmeTempCmsCache.mobileClubMap.get(newwap)!=null && UmeTempCmsCache.mobileClubMap.get(newwap)!=item) statusMsg += "ERROR: WAP Domain is already used by another club<br>";
+        else {
+            item.setWapDomain(newwap);
+            if (!newwap.equals("")) UmeTempCmsCache.mobileClubMap.put(newwap, item);
+        }
+        }
+        
+        if(!aReq.get("aWebDomain").equals("")){
+        String newweb = aReq.get("aWebDomain");
+        if (!newweb.equalsIgnoreCase("select") && UmeTempCmsCache.mobileClubMap.get(newweb)!=null && UmeTempCmsCache.mobileClubMap.get(newweb)!=item) statusMsg += "ERROR: WEB Domain is already used by another club<br>";
+        else {
+            item.setWebDomain(newweb);
+            if (!newweb.equals("")) UmeTempCmsCache.mobileClubMap.put(newweb, item);
+        }
+    }
+
+        
+        String newkw = "";
+        
+        if(!aReq.get("aKeyword").equals(""))
+        newkw=aReq.get("aKeyword").toLowerCase();
+        
+        if (!newkw.equals("")) {
+            String [] keywordlist={newkw};
+            if(newkw.contains(",")) {
+                keywordlist=commaseparate(newkw,",");
+            }
+            umesmskeyworddao.deleteItemByClub(item.getUnique());
+            for(int i=0;i<keywordlist.length;i++){
+                newkw=keywordlist[i]; //Added and can be removed if error. 
+                System.out.println("KEYUWORD "+newkw+ "LENGTH is "+keywordlist.length);
+            sdckw = umesdc.getSmsKeywordMap().get(newkw);
+            SdcSmsKeyword sdckwForSubstring =null;
+            try{
+            sdckwForSubstring=umesdc.getSmsKeywordMap().get(newkw.substring(0,4));
+            }catch(Exception e){sdckwForSubstring=null;}
+
+            if (sdckw!=null 
+            		&& !sdckw.getClubUnique().equals(item.getUnique())
+                    && sdckw.getaRegion().equalsIgnoreCase(item.getRegion())
+                	&& sdckw.getShortCode().equalsIgnoreCase(item.getSmsNumber())) statusMsg += "ERROR: Keyword is already used by another service "+sdckw.getClubUnique()+" <br>";
+            else if (sdckwForSubstring!=null 
+            		&& !sdckwForSubstring.getClubUnique().equals(item.getUnique())
+                    && sdckwForSubstring.getaRegion().equalsIgnoreCase(item.getRegion())
+                    && sdckwForSubstring.getShortCode().equalsIgnoreCase(item.getSmsNumber())) statusMsg += "ERROR: Keyword is already used by another service "+sdckwForSubstring.getClubUnique()+" <br>";
+            else {
+                if(keywordlist.length==1)
+                if (item.getSdcKeyword()!=null) umesmskeyworddao.deleteItem(item.getSdcKeyword().getUnique());
+                
+                sdckw = new SdcSmsKeyword();
+                sdckw.setServiceUnique(mClubIn);
+                sdckw.setLanguageCode("en");
+                sdckw.setKeyword(newkw.trim());
+                sdckw.setClubUnique(item.getUnique());
+                sdckw.setaRegion(item.getRegion().toLowerCase());
+                sdckw.setShortCode(item.getSmsNumber());
+                umesmskeyworddao.addItem(sdckw,item.getRegion(),item.getUnique(),item.getSmsNumber());
+                System.out.println("ADDING KEYUWORD "+newkw+"  clubUnique "+sdckw.getClubUnique());
+                umesmskeyworddao.initializeKeywords();
+                
+                item.setSdcKeyword(sdckw);
+            
+            } 
+        }//end for
+        }else{
+        	 umesmskeyworddao.deleteItemByClub(item.getUnique());
+        	 umesmskeyworddao.initializeKeywords();
+        }
+        /* else if (item.getSdcKeyword()!=null) {
+            umesmskeyworddao.deleteItem(item.getSdcKeyword().getUnique());
+            umesmskeyworddao.initializeKeywords();
+        } */
+
+        if (statusMsg.equals("")) statusMsg = "Information saved";
+               
+        mobileclubdao.saveItem(item);
+        mobileclubdao.initializeMobileClubs();
+        
+        if(!aReq.get("frequency").equals(""))
+            clubdetails.setFrequency(Integer.parseInt(aReq.get("frequency")));
+        
+       if(!aReq.get("freeday").equals(""))
+           clubdetails.setFreeDay(aReq.get("freeday","0"));
+
+
+   if(!aReq.get("billingType").equals(""))
+          clubdetails.setBillingType(aReq.get("billingType"));
+
+   if(!aReq.get("primaryServiceType").equals(""))
+     clubdetails.setServiceType(aReq.get("primaryServiceType"));
+
+   if(!aReq.get("paymentType").equals(""))
+      clubdetails.setPaymentType(aReq.get("paymentType"));
+
+
+   if(!aReq.get("servedBy").equals(""))
+    clubdetails.setServedBy(aReq.get("servedBy"));
+   if(!aReq.get("messagespoof").equals(""))
+    clubdetails.setClubSpoof(aReq.get("messagespoof"));
+   
+   if(!aReq.get("companycode").equals(""))
+    clubdetails.setCompanyCode(aReq.get("companycode"));
+   
+      
+       if(!aReq.get("frequency").equals("") || !aReq.get("freeday").equals(""))
+       {
+          umeclubdetailsdao.saveItem(clubdetails, unq);
+          umeclubdetailsdao.initializeUmeClubDetails();
+       }
+       java.util.List<UmeClubFeature> clubFeatureList=new ArrayList<UmeClubFeature>();
+       if(!aReq.get("primaryServiceType").equals("")){
+    	  			UmeClubFeature clubFeature=new UmeClubFeature();
+						clubFeature.setaUnique(Misc.generateUniqueId());
+						clubFeature.setaClubUnique(unq);
+						clubFeature.setaCredits(item.getCreditAmount());
+						clubFeature.setaCreated(new Date());
+						clubFeature.setaFeatureType("Primary");
+						clubFeature.setaFeature(aReq.get("primaryServiceType"));
+				    	clubFeatureList.add(clubFeature);
+		}
+   			
+    	
+       
+		if(!aReq.get("secondaryServiceType").equals("")){
+			
+						UmeClubFeature clubFeature=new UmeClubFeature();
+						clubFeature.setaUnique(Misc.generateUniqueId());
+						clubFeature.setaClubUnique(unq);
+						clubFeature.setaCredits(item.getCreditAmount());
+						clubFeature.setaCreated(new Date());
+						clubFeature.setaFeatureType("Secondary");
+						clubFeature.setaFeature(aReq.get("secondaryServiceType"));
+				    	   clubFeatureList.add(clubFeature);
+			
+       }
+		
+		if(clubFeatureList.size()>0){
+			clubfeature.deleteItem(unq);
+			clubfeature.saveItem(clubFeatureList);
+		}
+		
+		
+		
+       
+       //Reloading All The Servers added at 30-11-2015
+      // int reloaded=reloadeverything.reloadServers();
+    }
+    catch (Exception e) { System.out.println(e); statusMsg = "ERROR: " + e; }
+}
+
+if(clubFeatures!=null){
+for(UmeClubFeature clubFeature:clubFeatures){
+	if(clubFeature.getaFeatureType().equals("Primary"))
+		activePrimaryService=clubFeature.getaFeature();
+	if(clubFeature.getaFeatureType().equals("Secondary"))
+		activeSecondaryService=activeSecondaryService+clubFeature.getaFeature()+"?";
+}
+}
+/* System.out.println("Club Features "+clubFeatures.get(0).getaClubUnique());
+System.out.println("Active Secondary Service "+activeSecondaryService);
+ */
+java.util.List<String> keywordlist=umesmskeyworddao.getKeywords(item.getUnique());
+if(keywordlist.size()>1){
+for(int i=0;i<keywordlist.size();i++){
+    kw+=keywordlist.get(i)+",";
+}
+}
+
+else{
+sdckw = item.getSdcKeyword();
+if (sdckw!=null) kw = sdckw.getKeyword();
+}
+
+%>
+
+<%!
+public String[] commaseparate(String longString, String separateby){
+    System.out.println("287debug  inside underscore: "+longString);
+    String[] array = longString.split(separateby);
+    return array;
+}
+%>

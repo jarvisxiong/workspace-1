@@ -1,0 +1,75 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+int numberOfElements = Integer.parseInt(aReq.get("noe", "0"));
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+String regionid=aReq.get("regionid");
+String fileName = "modpromo4";
+//***************************************************************************************************
+
+String imgFormat = "gif";
+
+String client = aReq.get("clnt");
+String srvc = aReq.get("srvc");
+String cmd = aReq.get("cmd");
+String ss = aReq.get("ss");
+String updpic = Misc.hex8Decode(aReq.get("updpic"));
+String pic = aReq.get("pic");
+
+String dm = Misc.getCookie("_MXMDOMAINUNIQUE", request);
+String subpage = Misc.getCookie("_MXMSUBPAGEUNIQUE", request);
+
+if (dm.equals("") || srvc.equals("") || cmd.equals("") || client.equals("")) { out.println("domain / service / cmd / client missing"); return; }
+
+Query query=null, query2=null;
+Transaction trans=dbsession.beginTransaction();
+String sqlstr = "";
+String statusMsg ="";
+String statusMsg2 = "";
+String[] props = null;
+String[] pprops = null;
+String[] gprops = null;
+String[] dprops = null;
+
+String promoUnique = "";
+String game = ""; 
+boolean resample = false;
+String srvcTitle = "";
+String domainName = ((UmeDomain) SdkTempCache.domainMap.get(dm)).getName();
+
+if (cmd.equals("hotvideo")) srvcTitle = "Hot Video";
+
+if (ss.equals("1")) {
+	
+	sqlstr="update clientServices set numberOfElements='"+numberOfElements+"' where aUnique='"+srvc+"'";
+	query=dbsession.createSQLQuery(sqlstr);
+    int stat=query.executeUpdate();
+    
+}
+
+sqlstr="select numberOfElements from clientServices where aUnique='"+srvc+"'";
+query=dbsession.createSQLQuery(sqlstr).addScalar("numberOfElements");
+java.util.List list=query.list();
+
+for (Object o:list){
+	numberOfElements=Integer.parseInt(o.toString());
+}
+
+
+
+
+
+trans.commit();
+dbsession.close();
+%>

@@ -1,0 +1,1301 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+<%
+
+String parsedTemplateLocation=getServletContext().getInitParameter("parsed");
+String staticTemplateLocation=getServletContext().getInitParameter("static");
+
+/* String parsedTemplateLocation="F:/JAVA PROJECTS/UME/Templates/parsed/";
+String staticTemplateLocation="/var/www/lib/templates/static/";
+ */
+
+	//***************************************************************************************************////
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String adminGroup = aReq.getAdminGroup();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+UmeUser umeuser = (UmeUser) request.getAttribute("sdc_user");
+request.setAttribute("umedomain",(UmeDomain) request.getAttribute("umedomain"));
+UmeDomain umeDomain=(UmeDomain) request.getAttribute("umedomain");
+System.out.println("Domain URL: "+umeDomain.getDefaultUrl());
+//UmeUser umeuser = aReq.getUser();
+String userGroupUnique=umeuser.getUserGroup();
+String action="";
+
+String fileName = "index";
+//***************************************************************************************************
+String imageDir = System.getProperty("document_root") + "/images/javagames/promos/";
+DomainParameterDao domainparamdao=null;
+InitCmsParameters initcmsparam=null;
+ClientDao clientdao=null;
+
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+domainparamdao=(DomainParameterDao) ac.getBean("domainparameterdao");
+initcmsparam=(InitCmsParameters) ac.getBean("cmsparameters");
+clientdao=(ClientDao)ac.getBean("clientdao");
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+
+
+
+String sqlstr = "";
+String statusMsg ="";
+String[] props = null;
+String regionprops=null;
+String demo = "";
+String adultcontent = "";
+String client = "";
+String domainlink = "";
+String sublink = "";
+String clientunique="";
+Map params = null;
+java.util.List<String> regionlist=new java.util.ArrayList<String>();
+
+String[][] scats = new String[8][2];
+scats[0][0]= "General"; scats[0][1]= "ADC1206625351115";
+scats[1][0]= "Java Games"; scats[1][1]= "AAB1151391710156";
+scats[2][0]= "Videos"; scats[2][1]= "ADC1211964213751";
+scats[3][0]= "Master Tones"; scats[3][1]= "ADC1206625351114";
+scats[4][0]= "Images"; scats[4][1]= "ADC1206625351116";
+scats[5][0]= "Poly Tones"; scats[5][1]= "";
+//scats[6][0]= "True Tones"; scats[6][1]= "1019977323421CDA";
+scats[6][0]= "Fonecta"; scats[6][1]= "9228805798921CDS";
+scats[7][0]= "Quiz"; scats[7][1]= "5725759534341llun";
+
+
+java.util.List slist = null;
+java.util.List list = new ArrayList();
+java.util.List modules = new ArrayList();
+boolean foundDomain = false;
+java.util.List dms = new ArrayList();
+java.util.List sublist = new ArrayList();
+java.util.List classificationList=new ArrayList();
+java.util.List contentTypeList=new ArrayList();
+java.util.List templateList=new ArrayList();
+java.util.List subTemplateList=new ArrayList();
+java.util.List templateFiles=new ArrayList();
+java.util.List domainsLandingPages=new ArrayList();
+java.util.List domainsLandingPagesToBeAdded=new ArrayList();
+java.util.List cssFileList=new ArrayList();
+java.util.List landingPages=new ArrayList();
+java.util.List networks=new ArrayList();
+
+
+
+
+String location="";
+String staticFolderLocation="";
+String cssLocation="";
+
+String dm = aReq.get("dm");
+System.out.println("domain_name = "+dm);
+String regionid=aReq.get("regionid");
+String themeName=aReq.get("themeName");
+String subThemeName=aReq.get("subThemeName");
+String themeStatus=aReq.get("themeStatus");
+String template_page=aReq.get("template_page");
+String landingPage=aReq.get("landing_page");
+String classification=aReq.get("classification");
+String contentType=aReq.get("contenttype");
+String elementType=aReq.get("elementtype");
+String cssFile=aReq.get("cssFile");
+String numberOfElements=aReq.get("number_of_elements");
+String updateLandingPage=aReq.get("action","");
+String updateThemeSetting=aReq.get("editTheme","");
+String addLandingPage=aReq.get("addLanding");
+String landingStatus=aReq.get("landingStatus").equals("true")?"1":"0";
+System.out.println("Landing Status: "+landingStatus);
+String category=aReq.get("category");
+String pageName=aReq.get("page_name");
+String pageType=aReq.get("page_type");
+String networkName=aReq.get("networkName");
+String startTime=aReq.get("startTime");
+String endTime=aReq.get("endTime");
+String addTemplatePage=aReq.get("addTemplatePage");
+String selectedService=aReq.get("selectService");
+String landingPageCampaigns="";
+
+boolean subTemplatesExist=false;
+
+String subpage = aReq.get("subpage");
+String add = aReq.get("add");
+String addsub = aReq.get("addsub");
+String delsub = aReq.get("delsub");
+String save = aReq.get("ss");
+String addSrvc = aReq.get("addsrvc");
+
+String activeTemplate="";
+
+System.out.println("ADD SERVICE = "+addSrvc);
+int ind = Integer.parseInt(aReq.get("ind","1"));
+String cmd = aReq.get("cmd");
+String srvc = aReq.get("srvc");
+String newsub = aReq.get("newsub");
+
+Cookie ck = null;
+
+if (dm.equals("")) {
+    dm = Misc.getCookie("_MXMDOMAINUNIQUE", request);
+    subpage = Misc.getCookie("_MXMSUBPAGEUNIQUE", request);
+}
+
+if (dm.equals("null")) dm = "";
+
+ck = new Cookie("_MXMDOMAINUNIQUE", dm);
+ck.setMaxAge(-1);
+ck.setPath("/");
+response.addCookie(ck);    
+
+ck = new Cookie("_MXMSUBPAGEUNIQUE", subpage);
+ck.setMaxAge(-1);
+ck.setPath("/");
+response.addCookie(ck);
+
+String dividerColor1 = "#000000";
+String dividerColor2 = "#FFFFFF";
+//String selectedRegion=aReq.get("regionid");
+String userRegion="";
+
+
+
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+
+if(regionlist==null || regionlist.size()<=0){
+	sqlstr="select aRegion from userGroups where aUserGroupUnique='"+userGroupUnique+"'";
+	query=dbsession.createSQLQuery(sqlstr).addScalar("aRegion");
+	java.util.List regionResult=query.list();
+	for(Object region:regionResult){
+		String regionrow=region.toString();
+		//regionlist.add(regionrow);
+		userRegion=regionrow;
+}
+}
+
+if(!userRegion.equals("")){
+	
+	regionid=userRegion;
+	regionlist.add(userRegion);	
+}
+
+
+if(userRegion.equals("")&& regionid.equals("")){
+	
+	if(regionlist==null || regionlist.size()<=0){
+		sqlstr="select distinct(aRegion) from mobileClubs where aRegion<>''";
+		query=dbsession.createSQLQuery(sqlstr).addScalar("aRegion");
+		java.util.List regionresult=query.list();
+		for(Object regiono:regionresult){
+   		String regionrow=regiono.toString();
+   		regionlist.add(regionrow);
+   	}
+		//request.setAttribute("regionlist",regionlist);
+		System.out.println("Club Query: "+sqlstr+"   AND the size of regionlist is "+regionlist.size());
+ }
+	
+	
+}
+
+
+if (!add.equals("")) {
+	System.out.println("ADD Service Not Empty ");
+
+    if (!addSrvc.equals("")) {
+    	System.out.println("ADD Service Not Empty ");
+    	
+
+        int nextInd = 1;
+        sqlstr = "SELECT * FROM clientServices WHERE aDomain='" + dm + "' ORDER BY aIndex DESC LIMIT 0,1";
+        
+        query=dbsession.createSQLQuery(sqlstr).addScalar("aIndex");
+       java.util.List result=query.list();
+       if(result.size()>0)
+                     {
+           for(Object o:result)
+                             {
+             nextInd=Integer.parseInt(o.toString());
+           }
+       }
+      
+        String title = Misc.hex8Decode(addSrvc.substring(addSrvc.indexOf("_")+1));
+        addSrvc = addSrvc.substring(0,addSrvc.indexOf("_"));
+
+        sqlstr = "INSERT INTO clientServices VALUES('" + Misc.generateUniqueId() + "','" + dm + "','" + addSrvc + "'"
+                + ",'" + Misc.encodeForDb(title) + "','" + nextInd + "','1','#FFFFFF','#000000','" + subpage + "','" + classification + "','" 
+        + contentType + "','" + numberOfElements + "','" + category + "')";
+        query=dbsession.createSQLQuery(sqlstr);
+        int status=query.executeUpdate();
+
+        UmeTempCmsCache.clientServices = clientdao.getClientServices();
+       
+        //AppServerParameters.reloadClientServices();
+    }
+}
+else if (!addsub.equals("")) {
+    
+    if (!newsub.equals("") && !dm.equals("")) {
+        subpage = Misc.generateUniqueId();
+
+        sqlstr = "INSERT INTO clientSubPages VALUES('" + subpage + "','" + dm + "','" + Misc.encodeForDb(newsub) + "')";
+        System.out.println(sqlstr);
+        
+        query=dbsession.createSQLQuery(sqlstr);
+        int status=query.executeUpdate();
+                
+
+        if (newsub.equals("subscribe") || newsub.equals("timer") || newsub.equals("disclaimer")) {
+            domainparamdao.saveItem(newsub, dm, subpage);
+            UmeTempCmsCache.domainParameters = domainparamdao.loadAllDomains();
+        }
+
+        statusMsg = "New sub page added";
+        newsub = "";
+
+        ck = new Cookie("_MXMSUBPAGEUNIQUE", subpage);
+        ck.setMaxAge(-1);
+        ck.setPath("/");
+        response.addCookie(ck);
+
+        initcmsparam.reloadSubPageTypes();
+       
+    }
+}
+else if (!delsub.equals("") && !subpage.equals("") && !dm.equals("")) {
+    
+        sqlstr = "DELETE FROM clientSubPages WHERE aUnique='" + subpage + "' AND aDomain='" + dm + "'";
+        System.out.println(sqlstr);
+        query=dbsession.createSQLQuery(sqlstr);
+        int status=query.executeUpdate();
+        
+        sqlstr = "DELETE FROM clientServices WHERE aSubPage='" + subpage + "' AND aDomain='" + dm + "'";
+        System.out.println(sqlstr);
+        
+        query=dbsession.createSQLQuery(sqlstr);
+        status=query.executeUpdate();
+
+        statusMsg = "Sub page and all its models deleted";
+        subpage = "";
+
+        initcmsparam.reloadSubPageTypes();
+        
+}
+else if (cmd.equals("del")) {
+
+    sqlstr = "UPDATE clientServices SET aIndex=(aIndex-1) WHERE aDomain='" + dm + "' AND aIndex>'" + ind + "'";
+    
+    query=dbsession.createSQLQuery(sqlstr);
+    int stats=query.executeUpdate();
+
+    sqlstr = "DELETE FROM clientServices WHERE aUnique='" + srvc + "'";
+    query=dbsession.createSQLQuery(sqlstr);
+    stats=query.executeUpdate();
+
+    String punq = "";
+
+    sqlstr = "SELECT * FROM clientPromoPages WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+    query=dbsession.createSQLQuery(sqlstr).addScalar("aPromoUnique");
+    java.util.List result=query.list();
+    
+    
+    for(Object o:result)
+    {
+        
+        punq = o.toString(); 
+        sqlstr = "SELECT * FROM clientPromoImages WHERE aPromoUnique='" + punq + "'";
+        query=dbsession.createSQLQuery(sqlstr).addScalar("aImage");
+        java.util.List result2=query.list();
+        //while (rs2.next()) 
+        for(Object o2:result2)
+        {
+            File oldimg = new File(imageDir + o2.toString());
+            if (oldimg.exists() && !oldimg.isDirectory()) oldimg.delete();
+        }
+        
+        sqlstr = "DELETE FROM clientPromoImages WHERE aPromoUnique='" + punq + "'";
+        query=dbsession.createSQLQuery(sqlstr);
+        stats=query.executeUpdate();
+    }
+    
+    sqlstr = "DELETE FROM clientPromoPages WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+    query=dbsession.createSQLQuery(sqlstr);
+    stats=query.executeUpdate();
+
+    sqlstr = "SELECT * FROM clientContests WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+    query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique");
+    java.util.List results=query.list();
+    
+    for(Object os:results)
+    {
+        punq = os+"";
+        sqlstr = "SELECT * FROM clientPromoImages WHERE aPromoUnique='" + punq + "'";
+        query=dbsession.createSQLQuery(sqlstr).addScalar("aImage");
+        java.util.List results2=query.list();
+        for(Object os2:results2) {
+            File oldimg = new File(imageDir + os2.toString());
+            if (oldimg.exists() && !oldimg.isDirectory()) oldimg.delete();
+        }
+        
+        sqlstr = "DELETE FROM clientPromoImages WHERE aPromoUnique='" + punq + "'";
+        query=dbsession.createSQLQuery(sqlstr);
+        stats=query.executeUpdate();
+    }
+    
+    sqlstr = "DELETE FROM clientContests WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+    query=dbsession.createSQLQuery(sqlstr);
+    stats=query.executeUpdate();
+    
+    sqlstr = "DELETE FROM clientFreeTexts WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+    query=dbsession.createSQLQuery(sqlstr);
+    stats=query.executeUpdate();
+    
+    sqlstr = "DELETE FROM selectedCategories WHERE aServiceUnique='" + srvc + "' AND aDomainUnique='" + dm + "'";
+    query=dbsession.createSQLQuery(sqlstr);
+    stats=query.executeUpdate();
+
+    UmeTempCmsCache.clientServices = clientdao.getClientServices();
+    
+    //AppServerParameters.reloadClientServices();
+}
+else if (!save.equals("")) {
+
+    String unq = "";
+    String bg = "";
+    String font = "";
+
+    
+    Enumeration e = request.getParameterNames();
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("title_")) {
+            unq = elem.substring(6);
+            bg = Misc.encodeForDb(aReq.get("bg_" + unq));
+            font = Misc.encodeForDb(aReq.get("font_" + unq));
+
+            sqlstr = "UPDATE clientServices SET aTitle='" + Misc.encodeForDb(aReq.get(elem)) + "'"
+                    + ",aStatus='" + aReq.get("act_" + unq, "0") + "'"
+                    + ",aBackground='" + bg + "',aFont='" + font + "' WHERE aUnique='" + unq + "'";
+            //System.out.println(sqlstr);
+            query=dbsession.createSQLQuery(sqlstr);
+            int stats=query.executeUpdate();
+            
+        }
+    }
+      
+    domainparamdao.saveItem("adultcontent", dm, aReq.get("adultcontent", "0"));
+    domainparamdao.saveItem("demo", dm, aReq.get("demo", "0"));
+    domainparamdao.saveItem("css", dm, aReq.get("css"));
+	
+	domainparamdao.saveItem("title", dm, aReq.get("title"));
+    domainparamdao.saveItem("classification", dm, aReq.get("classification"));
+    UmeTempCmsCache.domainParameters = domainparamdao.loadAllDomains();
+
+    UmeTempCmsCache.clientServices = clientdao.getClientServices();
+
+    //AppServerParameters.reloadClientServices();
+    
+    
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+    if(!pageName.equals("") && !pageType.equals("")){
+    	templateFiles.add(pageName+"_"+pageType+".html");	
+    		if(pageType.equals("landing")){
+    			//landingPages.add(pageName+"_"+pageType+".html");
+    			landingPage=pageName+"_"+pageType;
+    			/* HashMap landingMap=new HashMap();
+    			landingMap.put("landingPage",pageName+"_"+pageType+".html");
+    			landingMap.put("startTime","");
+    			landingMap.put("endTime","");
+    			landingMap.put("network","");
+    			landingPages.add(landingMap);  */
+    			
+    			//String mylanding=landingPage.replace(".html","");
+    	    	
+    			sqlstr = "SELECT count(*) as count FROM domainsLandingPages WHERE aDomainUnique='" + dm + "' and aThemeName='" + themeName + "' and aLandingPage='"+landingPage.trim()+"'";
+    	        int count = 0;
+    	        query=dbsession.createSQLQuery(sqlstr).addScalar("count");
+    	        System.out.println("Landing Page Exist Or Not = "+sqlstr);
+    	        java.util.List countList=query.list();
+
+    	        for(Object o1:countList)
+    	                    {
+    	        		String row1=o1.toString();
+    	        		count = Integer.parseInt(String.valueOf(row1)); 
+    	                                        System.out.println("Landing Page Count : "+count);
+    	        	}
+    	        if(count==0){
+    	        	
+    	        	sqlstr = "INSERT INTO domainsLandingPages (aUnique,aDomainUnique,aTemplateName,aLandingPage) VALUES('" + Misc.generateUniqueId() + "','" + dm + "','" + activeTemplate + "','" + landingPage.trim() + "')";
+    	        	System.out.println("domainsLandingPages Insert Query = "+sqlstr);
+    	        	query=dbsession.createSQLQuery(sqlstr);
+    	          //  int status=query.executeUpdate();
+    	        }
+    			
+    		}
+    		
+    		}
+  
+  
+  
+    
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
+  
+  
+   /*  if(!landingPage.equals("")){
+
+    	String mylanding=landingPage.replace(".html","");
+    	sqlstr = "SELECT count(*) as count FROM domainsLandingPages WHERE aDomainUnique='" + dm + "' and aLandingPage='"+mylanding.trim()+"'";
+        int count = 0;
+        query=dbsession.createSQLQuery(sqlstr).addScalar("count");
+        System.out.println("Landing Page Exist Or Not = "+sqlstr);
+        java.util.List countList=query.list();
+
+        for(Object o1:countList)
+                    {
+        		String row1=o1.toString();
+        		count = Integer.parseInt(String.valueOf(row1)); 
+                                        System.out.println("Landing Page Count : "+count);
+        	}
+        if(count==0){
+        	sqlstr = "INSERT INTO domainsLandingPages VALUES('" + Misc.generateUniqueId() + "','" + dm + "','" + mylanding.trim() + "'"
+                    + ",'" + startTime + "','" + endTime + "','" + networkName + "')";
+        	System.out.println("domainsLandingPages Insert Query = "+sqlstr);
+        	query=dbsession.createSQLQuery(sqlstr);
+            int status=query.executeUpdate();
+        }
+
+    	
+    } */
+  
+ 
+  
+  
+    statusMsg = "Information saved";
+
+}
+
+
+
+
+//regionid
+ 
+if(regionid!=null && regionid.length()>0 && !regionid.trim().equalsIgnoreCase("")){
+    
+    
+    
+sqlstr="select dm.aDomainUnique, dm.aName,dm.aDefaultUrl from domains dm, mobileClubs mc where dm.aDomainUnique=mc.aWapDomain and mc.aRegion='"+regionid+"' AND dm.aActive='1' order by aName";
+
+        //+ " WHERE dm.aDomainUnique!='fjq32V44EqwaKUb' AND dm.aActive='1' AND ug.aActive='1' AND dm.aWapIps='1'";
+if (!UmeTempCmsCache.isSystemAdmin(adminGroup)) sqlstr += " AND cd.aClientUnique='" + ugid + "'";
+System.out.println(sqlstr);
+
+ query=dbsession.createSQLQuery(sqlstr).addScalar("aDomainUnique").addScalar("aName").addScalar("aDefaultUrl");//.addScalar("aClientUnique");
+java.util.List result=query.list();
+for(Object o:result) {
+    props = new String[4];
+    Object [] row=(Object[]) o;
+    props[0] = String.valueOf(row[0]);
+    props[1] = String.valueOf(row[1]);
+    props[2] = String.valueOf(row[2]);
+    //props[3] = String.valueOf(row[3]);
+    //props[4] = String.valueOf(row[4]);
+    dms.add(props);
+    if (dm.equals(props[0])) foundDomain = true;
+}
+
+System.out.println("DOMAIN: " + dm);
+
+
+
+}
+
+if (!dm.equals("")) {
+    
+    
+
+    sqlstr = "SELECT * FROM clientSubPages WHERE aDomain='" + dm + "' ORDER BY aTitle";
+    query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aDomain").addScalar("aTitle");
+    java.util.List clientsubresult=query.list();
+    
+    for(Object oclient:clientsubresult){
+        props = new String[3];
+        Object[] rowclient=(Object[]) oclient;
+        props[0] = String.valueOf(rowclient[0]);
+        props[1] = String.valueOf(rowclient[1]);
+        props[2] = String.valueOf(rowclient[2]);        
+        sublist.add(props);
+    }
+   
+
+    params = UmeTempCmsCache.domainParameters.get(dm);
+    System.out.println("PPPP: " + params);
+    if (params==null) params = new HashMap();
+    if (params.get("adultcontent")==null) params.put("adultcontent", "0");
+    if (params.get("demo")==null) params.put("demo", "0");
+    if (params.get("css")==null) params.put("css", "");
+    if (params.get("title")==null) params.put("title", "");
+    if (params.get("classification")==null) params.put("classification", "");
+    
+    
+    sqlstr = "SELECT dm.aDomainUnique,dm.aName,aDefaultUrl,aClientUnique FROM domains dm INNER JOIN clientDomains cd ON cd.aDomainUnique=dm.aDomainUnique "
+        + " INNER JOIN userGroups ug ON ug.aUserGroupUnique=cd.aClientUnique"
+        + " WHERE dm.aDomainUnique='"+dm+"' AND dm.aActive='1' AND ug.aActive='1'";
+    
+    query=dbsession.createSQLQuery(sqlstr).addScalar("aDomainUnique").addScalar("aName").addScalar("aDefaultUrl").addScalar("aClientUnique");
+    java.util.List clientresult=query.list();
+    for(Object oclientresult:clientresult)
+               {
+        Object[] oclientrow=(Object[]) oclientresult;
+        
+        clientunique=String.valueOf(oclientrow[3]);
+    }
+}
+
+if (!dm.equals("")) {
+
+    sqlstr = "SELECT * FROM clientServices INNER JOIN services ON aSrvcUnique=aServiceUnique WHERE clientServices.aDomain='" + dm + "'"
+              + " AND clientServices.aSubPage='" + subpage + "' AND services.aActive='1' ORDER by clientServices.aIndex,clientServices.aTitle";
+    
+   
+   query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aSrvcUnique").addScalar("aTitle").addScalar("aIndex")
+                       .addScalar("aStatus").addScalar("aName").addScalar("aBackground").addScalar("aFont").addScalar("aDefParameters");
+
+   java.util.List clientserviceresult=query.list();
+  System.out.println("wapsiteadmin sql query: "+ sqlstr+" \n");
+
+    for(Object clientserviceo:clientserviceresult) {
+        props = new String[9];
+        Object[] clientservicerow=(Object[]) clientserviceo;
+        props[0] = String.valueOf(clientservicerow[0]);
+        props[1] = String.valueOf(clientservicerow[1]);
+        props[2] = String.valueOf(clientservicerow[2]);
+        props[3] = String.valueOf(clientservicerow[3]);
+        props[4] = String.valueOf(clientservicerow[4]);
+        props[5] = String.valueOf(clientservicerow[5]);
+        props[6] = String.valueOf(clientservicerow[6]);
+        props[7] = String.valueOf(clientservicerow[7]);
+        props[8] = String.valueOf(clientservicerow[8]);
+        list.add(props);
+    }
+    
+    
+    
+    /*
+    sqlstr="SELECT distinct(aTitle) FROM clientServices INNER JOIN services ON aSrvcUnique=aServiceUnique WHERE clientServices.aDomain='" + dm + "'"
+            + " AND clientServices.aSubPage='" + subpage + "' AND services.aActive='1' ORDER by clientServices.aIndex,clientServices.aTitle";
+   	query=dbsession.createSQLQuery(sqlstr).addScalar("aTitle");
+   	java.util.List serviceTitles=query.list();
+   	for(Object title:serviceTitles) {
+       serviceTitleList.add(title.toString());
+    }
+   	
+   
+    */
+    
+    
+    
+  
+}
+
+if(!regionid.equals("")&&!dm.equals("")){
+	
+	File templatesForRegion=new File(parsedTemplateLocation+regionid);
+	System.out.println("directory "+templatesForRegion.getPath()+ " Exist or not: "+templatesForRegion.exists());
+	String[] templates=templatesForRegion.list();
+	String[] subTemplates=null;
+	
+/* 	    
+    	if(!templateTheme.equals("")){
+    	
+   		sqlstr = "SELECT count(*) as count FROM domainsTemplates WHERE aDomainUnique='" + dm + "' and templateName='"+templateTheme+"'";
+   	    int count = 0;
+   	    query=dbsession.createSQLQuery(sqlstr).addScalar("count");
+   	    java.util.List countList=query.list();
+
+   	    for(Object o1:countList)
+   	                {
+   	    		String row1=o1.toString();
+   	    		count = Integer.parseInt(String.valueOf(row1)); 
+   	                                    System.out.println("COUNTING BG : "+count);
+   	    	}
+   	    if(count==0){
+   	    	action="Activate";
+   	    	
+   	    	 String templateLocation="F:/JAVA PROJECTS/UME/Templates/"+regionid+"/"+templateTheme;
+   	    	sqlstr = "INSERT INTO domainsTemplates VALUES('" + Misc.generateUniqueId() + "','" + dm + "','" + templateLocation + "','"
+   	                + ",'.html','" + regionid + "','" + templateTheme + "','A')";
+   	    	System.out.println("DomainsTemplates Insert Query = "+sqlstr);
+   	    	query=dbsession.createSQLQuery(sqlstr);
+   	        int status=query.executeUpdate(); 
+   	    
+   	    }else{
+
+   	    	sqlstr = "SELECT * FROM domainsTemplates WHERE aDomainUnique='" + dm + "' and templateName='"+templateTheme+"'";
+   	    	query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("templateName").addScalar("status");
+   	    	query=dbsession.createSQLQuery(sqlstr).addScalar("status");
+   	   	    java.util.List templateStatus=query.list();
+
+   	   	    for(Object o1:templateStatus)
+   	   	                {
+   	   	    		String status=o1.toString();
+   	   	    		if(status.equals("A"))
+   	   	    			action="Deactivate";
+   	   	    		else
+   	   	    			action="Activate";
+   	   	    		
+   	   	    	}
+
+   						
+   	    	 sqlstr = "update domainsTemplates set status='A' where aDomainUnique='"
+						+ dm + "' and templateName='" + templateTheme + "'";
+				System.out.println("DomainsTemplates Update Query = "
+						+ sqlstr);
+				query = dbsession.createSQLQuery(sqlstr);
+				int status = query.executeUpdate();
+
+				sqlstr = "update domainsTemplates set status='I' where aDomainUnique='"
+						+ dm + "' and templateName<>'" + templateTheme + "'";
+				System.out.println("DomainsTemplates Update Query = "
+						+ sqlstr);
+				query = dbsession.createSQLQuery(sqlstr);
+				status = query.executeUpdate();
+ 		}
+		} 
+
+		 sqlstr = "SELECT * FROM domainsTemplates WHERE aDomainUnique='" + dm + "' order by templateName";
+		query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("templateName").addScalar("status");
+		java.util.List templates=query.list();
+		 */
+		
+		 
+		 
+		if(!addLandingPage.equals("")){
+			/* sqlstr="SELECT * from domainsTemplates where aDomainUnique='"+dm+"' and templateName='"+themeName+"'";
+			System.out.println("domainsTemplates Select Query = "+sqlstr);
+			query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique");
+			String themeUnique="";
+			java.util.List themeList=query.list();
+			for(Object o1:themeList){
+		    	themeUnique=o1.toString();
+		    	System.out.println("ThemeUnique: "+themeUnique);
+		    } */
+
+			sqlstr = "INSERT INTO domainsLandingPages (aUnique,aDomainUnique,aTemplateName,aLandingPage) VALUES('" + Misc.generateUniqueId() + "','" + dm + "','" + themeName + "','" + addLandingPage.trim() + "')";
+			System.out.println("domainsLandingPages Insert Query = "+sqlstr);
+			query=dbsession.createSQLQuery(sqlstr);
+		    int status=query.executeUpdate();
+		}
+
+		if(updateLandingPage.equals("edit")){
+			  sqlstr="update domainsLandingPages set "+ 
+			  	"aStartTime='"+startTime+"',"+ 
+			  	"aEndTime='"+endTime+"',"+ 
+			  	"aNetwork='"+networkName+"',"+ 
+				"aStatus='"+landingStatus+"' "+ 
+			  	
+				"where aDomainUnique='"+dm+"' and aLandingPage='"+landingPage+"'";
+			  System.out.println("domainsLandingPages Update Query = "+sqlstr);
+				query=dbsession.createSQLQuery(sqlstr);
+		    int status=query.executeUpdate();
+		/* }else if (updateLandingPage.equals("delete")){
+			
+			//landing page delete work
+			sqlstr="select * from mobileClubCampaignsLandingPages mcclp, mobileClubCampaigns mcc where mcc.aUnique=mcclp.aCampaignUnique and " 
+					+"aLandingPageCode='"+landingPage+"'";
+			query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aCampaign");
+			java.util.List campaignList=query.list();
+			if(campaignList.isEmpty()){
+				sqlstr="delete from domainsLandingPages where aDomainUnique='"+dm+"' and aLandingPage='"+landingPage+"'";
+				query=dbsession.createSQLQuery(sqlstr);
+		    	int status=query.executeUpdate();
+			}else{
+				String campaignListInJson="";
+				for(Object o:campaignList) {
+					Object[] row=(Object[]) o;
+				    campaignListInJson=campaignListInJson+"\"cid\": \""+String.valueOf(row[0])+"\",\"campaign\": \""+String.valueOf(row[1])+"\",";
+					
+				}
+				landingPageCampaigns="{"
+						+ "\"landingPage\": \""+landingPage+"\","
+						+ "\"campaigns\":[{"
+						+ campaignListInJson.substring(0, campaignListInJson.length()-1)
+						+ "}]}";
+					
+			} */
+		}else if(updateLandingPage.equals("delete")) {
+			sqlstr="delete from domainsLandingPages where aDomainUnique='"+dm+"' and aLandingPage='"+landingPage+"'";
+			query=dbsession.createSQLQuery(sqlstr);
+	    	int status=query.executeUpdate();
+	    	sqlstr="delete from mobileClubCampaignsLandingPages where aLandingPageCode='"+landingPage+"'";
+			query=dbsession.createSQLQuery(sqlstr);
+	    	status=query.executeUpdate();
+			
+		}
+
+
+
+		if(!themeName.equals("")){
+			
+			File subtTemplatesForRegion=new File(parsedTemplateLocation+regionid+"/"+themeName);
+			System.out.println("Sub Template path: "+subtTemplatesForRegion.getPath());
+			subTemplates = subtTemplatesForRegion.list(new FilenameFilter() {
+				  @Override
+				  public boolean accept(File current, String name) {
+				    return new File(current, name).isDirectory();
+				  }
+				});
+		
+			if(subTemplates==null||subTemplates.length<=0){
+				
+			sqlstr = "SELECT count(*) as count FROM domainsTemplates WHERE aDomainUnique='" + dm + "'";
+			    int count = 0;
+			    query=dbsession.createSQLQuery(sqlstr).addScalar("count");
+			    java.util.List countList=query.list();
+
+			    for(Object o1:countList)
+			                {
+			    		String row1=o1.toString();
+			    		count = Integer.parseInt(String.valueOf(row1)); 
+			                                    System.out.println("COUNTING BG : "+count);
+			    	}
+			    if(count==0){
+			    	
+			    	
+			    	sqlstr = "INSERT INTO domainsTemplates VALUES('" + Misc.generateUniqueId() + "','" + dm + "','" + parsedTemplateLocation+regionid+"/"+themeName + "'"
+			                + ",'.html','" + regionid + "','" + themeName + "','1','" + staticTemplateLocation+regionid+"/"+themeName + "')";
+			    	System.out.println("DomainsTemplates Insert Query = "+sqlstr);
+			    	query=dbsession.createSQLQuery(sqlstr);
+			        int status=query.executeUpdate(); 
+			    
+			    }else{
+				
+				sqlstr="Update domainsTemplates set templateFolder='"+parsedTemplateLocation+regionid+"/"+themeName + "', templateName='"+themeName+"',templateStaticFolder='"+staticTemplateLocation+regionid+"/"+themeName + "' where aDomainUnique='" + dm + "'";
+			    	System.out.println("DomainsTemplates Update Query = "+sqlstr);
+			    	query=dbsession.createSQLQuery(sqlstr);
+			        int status=query.executeUpdate(); 
+
+			    	
+
+								
+			    	 
+				}
+			    
+			}else{
+				for(int i=0;i<subTemplates.length;i++){
+					System.out.println("Sub Template: "+subTemplates[i]);
+				}
+				subTemplatesExist=true;
+				sqlstr = "SELECT count(*) as count FROM domainsTemplates WHERE aDomainUnique='" + dm + "'";
+			    int count = 0;
+			    query=dbsession.createSQLQuery(sqlstr).addScalar("count");
+			    java.util.List countList=query.list();
+
+			    for(Object o1:countList)
+			                {
+			    		String row1=o1.toString();
+			    		count = Integer.parseInt(String.valueOf(row1)); 
+			                                    System.out.println("COUNTING BG : "+count);
+			    	}
+			    if(count==0){
+			    	
+			    	
+			    	sqlstr = "INSERT INTO domainsTemplates VALUES('" + Misc.generateUniqueId() + "','" + dm + "','" + parsedTemplateLocation+regionid+"/"+themeName + "'"
+			                + ",'.html','" + regionid + "','" + themeName + "','1','" + staticTemplateLocation+regionid+"/"+themeName + "')";
+			    	System.out.println("DomainsTemplates Insert Query = "+sqlstr);
+			    	query=dbsession.createSQLQuery(sqlstr);
+			        int status=query.executeUpdate(); 
+			    
+			    }else{
+				
+				sqlstr="Update domainsTemplates set templateFolder='"+parsedTemplateLocation+regionid+"/"+themeName + "', templateName='"+themeName+"',templateStaticFolder='"+staticTemplateLocation+regionid+"/"+themeName + "' where aDomainUnique='" + dm + "'";
+			    	System.out.println("DomainsTemplates Update Query = "+sqlstr);
+			    	query=dbsession.createSQLQuery(sqlstr);
+			        int status=query.executeUpdate(); 
+			    }
+			}
+			
+			if(!subThemeName.equals("")){
+				sqlstr = "SELECT count(*) as count FROM domainsTemplates WHERE aDomainUnique='" + dm + "'";
+			    int count = 0;
+			    query=dbsession.createSQLQuery(sqlstr).addScalar("count");
+			    java.util.List countList=query.list();
+
+			    for(Object o1:countList)
+			                {
+			    		String row1=o1.toString();
+			    		count = Integer.parseInt(String.valueOf(row1)); 
+			                                    System.out.println("COUNTING BG : "+count);
+			    	}
+			    if(count==0){
+			    	
+			    	
+			    	sqlstr = "INSERT INTO domainsTemplates VALUES('" + Misc.generateUniqueId() + "','" + dm + "','" + parsedTemplateLocation+regionid+"/"+themeName+"/"+subThemeName + "'"
+			                + ",'.html','" + regionid + "','" + themeName+"/"+subThemeName + "','1','" + staticTemplateLocation+regionid+"/"+themeName+"/"+subThemeName + "')";
+			    	System.out.println("DomainsTemplates Insert Query = "+sqlstr);
+			    	query=dbsession.createSQLQuery(sqlstr);
+			        int status=query.executeUpdate(); 
+			    
+			    }else{
+				
+				sqlstr="Update domainsTemplates set templateFolder='"+parsedTemplateLocation+regionid+"/"+themeName+"/"+subThemeName + "', templateName='"+themeName+"/"+subThemeName+"',templateStaticFolder='"+staticTemplateLocation+regionid+"/"+themeName+"/"+subThemeName + "' where aDomainUnique='" + dm + "'";
+			    	System.out.println("DomainsTemplates Update Query = "+sqlstr);
+			    	query=dbsession.createSQLQuery(sqlstr);
+			        int status=query.executeUpdate(); 
+
+			    	
+
+			}
+			
+			}
+			
+			
+			
+		}
+		
+		if(templates!=null){
+			System.out.println("Template Name: "+templates[0]);
+		 for (int i = 0; i < templates.length; i++) {
+			 
+			File f = new File(parsedTemplateLocation+regionid+"/"+templates[i]);
+			if (f.isDirectory()){
+				
+				sqlstr = "SELECT * FROM domainsTemplates WHERE aDomainUnique='"
+						+ dm
+						+ "' and templateName like '%"
+						+ templates[i]+ "%'";
+				System.out.println("Theme Data Query: "
+						+ sqlstr);
+				query = dbsession.createSQLQuery(sqlstr)
+						.addScalar("templateName")
+						.addScalar("status")
+						;
+				java.util.List tList = query.list();
+				if(tList.size()>0){
+				for (Object template : tList) {
+					Object[] templateRow = (Object[]) template;
+					HashMap templateMap = new HashMap();
+					String templateName=String.valueOf(templateRow[0]);
+					if(templateName.contains("/")){
+						templateName=templateName.substring(0,templateName.indexOf("/"));
+					}
+					templateMap.put("templateName",templateName);
+					templateMap.put("status",
+							String.valueOf(templateRow[1]));
+					templateList.add(templateMap);
+					if(String.valueOf(templateRow[1]).equals("1"))
+						activeTemplate=String.valueOf(templateName);
+					System.out.println("Template Name DB: "+templateName);
+					}
+				}else{
+					HashMap templateMap = new HashMap();
+					templateMap.put("templateName",templates[i]);
+					templateMap.put("status","0");
+					templateList.add(templateMap);
+					
+				}
+		}
+		 }
+		}
+		if(!activeTemplate.equals("")){
+		File subtTemplatesForRegion=new File(parsedTemplateLocation+regionid+"/"+activeTemplate);
+		System.out.println("Sub Template path: "+subtTemplatesForRegion.getPath());
+		subTemplates = subtTemplatesForRegion.list(new FilenameFilter() {
+			  @Override
+			  public boolean accept(File current, String name) {
+			    return new File(current, name).isDirectory();
+			  }
+			});
+	
+		
+		if(subTemplates!=null&&subTemplates.length>0){
+			subTemplatesExist=true;
+			System.out.println("SubTemplate Name: "+subTemplates[0]);
+		 for (int i = 0; i < subTemplates.length; i++) {
+			 
+			File f = new File(parsedTemplateLocation+regionid+"/"+activeTemplate+"/"+subTemplates[i]);
+			if (f.isDirectory()){
+				
+				sqlstr = "SELECT * FROM domainsTemplates WHERE aDomainUnique='"
+						+ dm
+						+ "' and templateName like '%"
+						+ subTemplates[i]+ "%'";
+				System.out.println("Theme Data Query: "
+						+ sqlstr);
+				query = dbsession.createSQLQuery(sqlstr)
+						.addScalar("templateName")
+						.addScalar("status")
+						;
+				java.util.List tList = query.list();
+				if(tList.size()>0){
+				for (Object template : tList) {
+					Object[] templateRow = (Object[]) template;
+					HashMap templateMap = new HashMap();
+					String templateName=String.valueOf(templateRow[0]);
+					if(templateName.contains("/")){
+						templateName=templateName.substring(templateName.indexOf("/")+1);
+					}
+					templateMap.put("templateName",templateName);
+					templateMap.put("status",
+							String.valueOf(templateRow[1]));
+					subTemplateList.add(templateMap);
+					//if(String.valueOf(templateRow[1]).equals("1"))
+					//	activeTemplate=String.valueOf(templateName);
+					System.out.println("Template Name DB: "+templateName);
+					}
+				}else{
+					HashMap templateMap = new HashMap();
+					templateMap.put("templateName",subTemplates[i]);
+					templateMap.put("status","0");
+					subTemplateList.add(templateMap);
+					
+				}
+		}
+		 }
+		}
+		}
+		 
+		 
+		 sqlstr = "SELECT * FROM domainsTemplates WHERE aDomainUnique='"
+				+ dm + "' and status='1'";
+		query = dbsession.createSQLQuery(sqlstr)
+				.addScalar("templateFolder")
+				.addScalar("templateStaticFolder");
+		java.util.List templateLocationList = query.list();
+		if(templateLocationList.size()==1){
+		for (Object templateLocation : templateLocationList) {
+			Object[] templateLocationRow = (Object[]) templateLocation;
+			location = String.valueOf(templateLocationRow[0]);
+			staticFolderLocation = String
+					.valueOf(templateLocationRow[1]);
+
+		}
+		}
+		sqlstr = "SELECT * FROM RegionNetworks WHERE Region='"
+				+ regionid + "'";
+		query = dbsession.createSQLQuery(sqlstr)
+				.addScalar("aNetworkCode").addScalar("aAggregator");
+		java.util.List networkList = query.list();
+		for (Object network : networkList) {
+			props = new String[2];
+			Object[] networkrow = (Object[]) network;
+			props[0] = String.valueOf(networkrow[0]);
+			props[1] = String.valueOf(networkrow[1]);
+			networks.add(props);
+			//location=templateLocation.toString();
+
+		}
+
+		if (!pageName.equals("") && !pageType.equals("")
+				&& !save.equals("")) {
+			File newTemplate = new File(location + "/" + pageName + "_"
+					+ pageType + ".html");
+			System.out.println("PAGE NAME " + pageName + " LOCATION "
+					+ location + newTemplate.getAbsolutePath());
+			boolean createdfile = newTemplate.createNewFile();
+			System.out.println("THE VALUE OF CREATION IS "
+					+ createdfile);
+			if (pageType.equals("Text")) {
+				if (!newTemplate.createNewFile()) {
+					System.out
+							.println("Exception Error Creating File ");
+				}
+			} else if (pageType.equals("Landing")) {
+				FileUtils.copyFile(new File(location
+						+ "/landing-page.html"), newTemplate);
+				newTemplate.setLastModified(System.currentTimeMillis());
+			}
+		}
+
+		try {
+			if (!location.equals("")) {
+
+				File templateFolder = new File(location);
+				File[] templateFolderContents = templateFolder
+						.listFiles();
+				for (int k = 0; k < templateFolderContents.length; k++) {
+					templateFiles.add(templateFolderContents[k]
+							.getName());
+					if (templateFolderContents[k].getName().toLowerCase().contains(
+							"landing")) {
+
+						sqlstr = "SELECT * FROM domainsLandingPages WHERE aDomainUnique='"
+								+ dm
+								+ "' and aLandingPage='"
+								+ templateFolderContents[k]
+										.getName()
+										.substring(
+												0,
+												templateFolderContents[k]
+														.getName()
+														.indexOf("."))
+								+ "'";
+						System.out.println("Landing Data Query: "
+								+ sqlstr);
+						query = dbsession.createSQLQuery(sqlstr)
+								.addScalar("aLandingPage")
+								.addScalar("aStartTime")
+								.addScalar("aEndTime")
+								.addScalar("aNetwork")
+								.addScalar("aStatus");
+						java.util.List landingList = query.list();
+						for (Object landing : landingList) {
+							Object[] landingRow = (Object[]) landing;
+							HashMap landingMap = new HashMap();
+							landingMap.put("landingPage",
+									String.valueOf(landingRow[0]));
+							landingMap.put("startTime",
+									String.valueOf(landingRow[1]));
+							landingMap.put("endTime",
+									String.valueOf(landingRow[2]));
+							landingMap.put("network",
+									String.valueOf(landingRow[3]));
+							landingMap.put("status",
+									String.valueOf(landingRow[4]));
+
+							landingPages.add(landingMap);
+							/* System.out.println("Landing Page: "+landingMap.get("landingPage"));
+							System.out.println("Landing Page Status "+landingMap.get("status")); */
+							domainsLandingPages.add(String
+									.valueOf(landingRow[0]));
+
+						}
+					}
+					System.out.println("Files inside " + templateFolder
+							+ " = "
+							+ templateFolderContents[k].getName());
+
+				}
+
+				String templateName = "";
+				String lpage = "";
+				for (int i = 0; i < templateFiles.size(); i++) {
+					boolean added = false;
+					templateName = (String) templateFiles.get(i);
+					if (templateName.toLowerCase().contains("landing")) {
+						for (int j = 0; j < domainsLandingPages.size(); j++) {
+
+							lpage = (String) domainsLandingPages.get(j);
+							lpage = lpage + ".html";
+							/* System.out.println("Check Landing Pages: "+templateName);
+							System.out.println("domainsLandingPage: "+lpage); */
+							if (lpage.equals(templateName)) {
+								added = true;
+								break;
+							}
+						}
+						if (!added)
+							domainsLandingPagesToBeAdded
+									.add(templateName.substring(0,
+											templateName.indexOf(".")));
+					}
+
+				}
+				Collections.sort(templateFiles);
+				Collections.sort(landingPages);
+				System.out.println("Region Name = " + regionid);
+
+				cssLocation = staticFolderLocation + "/css";
+				File cssFileLocation = new File(cssLocation);
+				File[] cssFiles = cssFileLocation.listFiles();
+				for (int k = 0; k < cssFiles.length; k++) {
+					cssFileList.add(cssFiles[k].getName());
+					//if(templateFolderContents[k].getName().contains("landing"))
+					//	landingPages.add(templateFolderContents[k].getName());
+					//System.out.println("Files inside "+templateFolder+" = "+templateFolderContents[k].getName());
+				}
+				Collections.sort(cssFileList);
+				//Collections.sort(landingPages);
+				System.out.println("Region Name = " + regionid);
+			}
+		} catch (Exception e) {
+		}
+
+	}
+
+	if (!landingPage.equals("") && !networkName.equals("")) {
+
+		sqlstr = "SELECT * FROM domainsLandingPages WHERE aDomainUnique='"
+				+ dm
+				+ "' and aLandingPage='"
+				+ landingPage
+				+ "' and aNetwork='" + networkName + "'";
+		query = dbsession.createSQLQuery(sqlstr)
+				.addScalar("aStartTime").addScalar("aEndTime");
+		System.out.println("Landing Page Time Setting Query = "
+				+ sqlstr);
+		java.util.List landingTimeList = query.list();
+		if (landingTimeList.size() > 0) {
+			for (Object landingTime : landingTimeList) {
+
+				Object[] landingTimeRow = (Object[]) landingTime;
+				startTime = landingTimeRow[0].toString();
+				endTime = landingTimeRow[1].toString();
+				//networks.add(props);
+				//location=templateLocation.toString();
+
+			}
+		} else {
+			startTime = "";
+			endTime = "";
+		}
+
+	}
+
+	/* if(!landingPage.equals("")){
+	 sqlstr = "SELECT * FROM RegionNetworks WHERE Region='" + regionid + "'";
+	 query=dbsession.createSQLQuery(sqlstr).addScalar("aNetworkCode").addScalar("aAggregator");
+	 java.util.List networkList=query.list();
+	 for(Object network:networkList)
+	 {
+	 props = new String[2];
+	 Object[] networkrow=(Object[]) network;
+	 props[0]=String.valueOf(networkrow[0]);
+	 props[1]=String.valueOf(networkrow[1]);
+	 networks.add(props);
+	 //location=templateLocation.toString();
+	
+	
+	 } 
+	 }
+	 */
+
+	for (int i = 0; i < scats.length; i++) {
+		if (scats[i][0].equals("") || scats[i][1].equals(""))
+			continue;
+
+		slist = new ArrayList();
+
+		sqlstr = "SELECT * FROM services WHERE aActive='1' AND aCategory='"
+				+ scats[i][1] + "' AND aSecLevel='0' ORDER BY aName";
+		query = dbsession.createSQLQuery(sqlstr)
+				.addScalar("aServiceUnique").addScalar("aName");
+		System.out.println(sqlstr);
+		java.util.List servicesresult = query.list();
+		for (Object serviceso : servicesresult) {
+			props = new String[2];
+			Object[] servicesrow = (Object[]) serviceso;
+			props[0] = String.valueOf(servicesrow[0]);
+			props[1] = String.valueOf(servicesrow[1]);
+			slist.add(props);
+		}
+
+		modules.add(scats[i][0]);
+		modules.add(slist);
+	}
+
+	if (!foundDomain) {
+		ck = new Cookie("_MXMDOMAINUNIQUE", "");
+		ck.setMaxAge(-1);
+		ck.setPath("/");
+		response.addCookie(ck);
+		ck = new Cookie("_MXMSUBPAGEUNIQUE", "");
+		ck.setMaxAge(-1);
+		ck.setPath("/");
+		response.addCookie(ck);
+	}
+
+	if (regionlist == null || regionlist.size() <= 0) {
+		sqlstr = "select distinct(aRegion) from mobileClubs where aRegion<>''";
+		query = dbsession.createSQLQuery(sqlstr).addScalar("aRegion");
+		java.util.List regionresult = query.list();
+		for (Object regiono : regionresult) {
+			String regionrow = regiono.toString();
+			regionlist.add(regionrow);
+		}
+		//request.setAttribute("regionlist",regionlist);
+		System.out.println("Club Query: " + sqlstr
+				+ "   AND the size of regionlist is "
+				+ regionlist.size());
+	}
+
+	sqlstr = "select aClassification,count(*) from itemCategories where aClassification<>'' group by aClassification";
+	query = dbsession.createSQLQuery(sqlstr).addScalar(
+			"aClassification");
+	java.util.List classficationResult = query.list();
+	for (Object c : classficationResult) {
+		String classificationrow = c.toString();
+		classificationList.add(classificationrow);
+	}
+
+	sqlstr = "select distinct aContentType from itemCategories where aClassification='"
+			+ classification + "'";
+	query = dbsession.createSQLQuery(sqlstr).addScalar("aContentType");
+	java.util.List contentTypeResult = query.list();
+	for (Object c : contentTypeResult) {
+		String contenttyperow = c.toString();
+		contentTypeList.add(contenttyperow);
+	}
+
+	if (!save.equals("")) {
+		landingPage = "";
+		networkName = "";
+	}
+
+	trans.commit();
+	dbsession.close();
+
+	Map colorMap = new HashMap<String, String>();
+	if (request.getParameter("header_bgcolor") == null)
+		colorMap.put("header_bgcolor", "aaaaaa");
+	else {
+
+		colorMap.put("header_bgcolor",
+				request.getParameter("header_bgcolor"));
+		colorMap.put("header_fontcolor",
+				request.getParameter("header_fontcolor"));
+		colorMap.put("body_bgcolor",
+				request.getParameter("body_bgcolor"));
+		colorMap.put("body_fontcolor",
+				request.getParameter("body_fontcolor"));
+		colorMap.put("footer_bgcolor",
+				request.getParameter("footer_bgcolor"));
+		colorMap.put("footer_fontcolor",
+				request.getParameter("footer_fontcolor"));
+	}
+	request.setAttribute("colorMap", colorMap);
+
+	String domain_for_edit_template = request.getParameter("dm");
+	if (request.getParameter("header_bgcolor") != null) {
+		//String headercss="background-color:#"+aReq.get("header_bgcolor")+"; color:#"+aReq.get("header_fontcolor")+";";
+		//String bodycss="background-color:#"+aReq.get("body_bgcolor")+"; color:#"+aReq.get("body_fontcolor")+";";
+		//String footercss="background-color:#"+aReq.get("footer_bgcolor")+"; color:#"+aReq.get("footer_fontcolor")+";";
+		String header_bg = aReq.get("header_bgcolor");
+		String header_font = aReq.get("header_fontcolor");
+		String body_bg = aReq.get("body_bgcolor");
+		String body_font = aReq.get("body_fontcolor");
+		String footer_bg = aReq.get("footer_bgcolor");
+		String footer_font = aReq.get("footer_fontcolor");
+
+		domainparamdao.saveItem("header_bg", domain_for_edit_template,
+				header_bg);
+		domainparamdao.saveItem("header_font",
+				domain_for_edit_template, header_font);
+		domainparamdao.saveItem("body_bg", domain_for_edit_template,
+				body_bg);
+		domainparamdao.saveItem("body_font", domain_for_edit_template,
+				body_font);
+		domainparamdao.saveItem("footer_bg", domain_for_edit_template,
+				footer_bg);
+		domainparamdao.saveItem("footer_font",
+				domain_for_edit_template, footer_font);
+		UmeTempCmsCache.domainParameters = domainparamdao
+				.loadAllDomains();
+		System.out.println("domain = " + request.getParameter("dm"));
+		System.out.println("header_background = "
+				+ aReq.get("header_bgcolor"));
+		System.out.println("header_background = "
+				+ request.getParameter("header_bgcolor"));
+		System.out.println("domain = " + aReq.getDomain());
+	}
+	System.out.println("domain = " + aReq.getDomain());
+%>
+

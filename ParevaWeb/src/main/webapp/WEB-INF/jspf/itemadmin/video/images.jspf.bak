@@ -1,0 +1,315 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "images";
+//***************************************************************************************************
+//String imageDir = System.getProperty("document_root");
+String imageDir = "/var/www";
+String imgFormat = "gif";
+String imgPath = "/images/item/";
+
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+
+String sqlstr = "";
+String statusMsg = "";
+
+String imgType = aReq.get("itype");
+String fileType = aReq.get("ftype");
+String unique = aReq.get("unq");
+String restype = aReq.get("restype", "shot");
+String add = aReq.get("add");
+String delpic = aReq.get("delpic");
+String save = aReq.get("save"); 
+String resample = aReq.get("resample"); 
+String repl = aReq.get("repl", "1");
+String neww = aReq.get("neww");
+String newh = aReq.get("newh");
+ 
+String contentType = request.getHeader("Content-Type");
+if (contentType==null) contentType="";
+
+if (contentType.startsWith("multipart/form-data")) {
+    
+	String boundary = "";
+	try { boundary = contentType.substring((contentType.indexOf("boundary=")+9)); }
+	catch (IndexOutOfBoundsException e) {}
+
+	int length = 0;
+	try { length = Integer.parseInt(request.getHeader("Content-Length")); }
+	catch (NumberFormatException e) {}
+
+	if (!boundary.equals("") && length>0) {
+            HashMap map = FileUtil.parseMultiPartFormData(length, boundary,
+                    new BufferedLineReader(new InputStreamReader(request.getInputStream(), "iso-8859-1"), 1024));
+
+            unique = (String) map.get("unq");
+            imgType = (String) map.get("itype");
+            restype = (String) map.get("restype");
+            if (restype==null) restype = "";
+            String[] props2 = (String[]) map.get("img");
+            String[] props3 = (String[]) map.get("replimg");
+            
+            System.out.println(props2);
+            System.out.println(props3);
+           // System.out.println(props2[0]);
+           // System.out.println(props2[2]);            
+          //  System.out.println("3: " + props3[0]);
+           // System.out.println("4: " + props3[2]);
+
+            if (props2!=null && !props2[0].equals("") && !props2[2].equals("")) {
+                
+                String fName = Misc.generateUniqueId();
+                props2[2] = props2[2].toLowerCase();
+
+                if (props2[2].endsWith(".gif")) fName += ".gif";
+                else if (props2[2].endsWith(".png")) fName += ".png";
+                else fName += ".jpg";
+
+                FileUtil.writeRawToFile(imageDir + imgPath + fName, props2[0], false);
+                
+                int index = 1;                     
+                sqlstr = "SELECT * FROM itemImages WHERE aItemUnique='" + unique + "' AND aType='" + imgType + "image' ORDER BY aIndex DESC LIMIT 0,1";
+                   query=dbsession.createSQLQuery(sqlstr).addScalar("aIndex");
+                java.util.List result=query.list();
+                
+                if (result.size()>0) {
+                    for(Object o:result){
+                    index = Integer.parseInt(o.toString())+1;
+                    }
+                }
+                File org_upload = new File(imageDir + imgPath + fName);
+                BufferedImage srcimg = ImageIO.read(org_upload);
+                BufferedImage newimg = null;
+                int iw = srcimg.getWidth(null);
+                int ih = srcimg.getHeight(null);
+                
+                String imageGroup = Misc.generateUniqueId();
+                
+                if (imgType.equals("web")) {                                                
+                    sqlstr = "INSERT INTO itemImages VALUES('" + Misc.generateUniqueId() + "','" + unique + "','" + imgType + "image','" + index + "'"
+                             + ",'" + Misc.makeSqlSafe(imgPath + fName) + "','" + MiscDate.now24sql() + "'"
+                            + ",'0','" + imageGroup + "','" + iw + "','" + ih + "')";              
+                    query=dbsession.createSQLQuery(sqlstr);
+                    query.executeUpdate();  
+                }
+                else {
+                    
+                    org_upload.delete();                     
+                    
+                    int k = 4;                  
+                    int sizeIndex = 3;
+                    String upType = "mobimage";
+                    
+                    if (restype.equals("full")) { sizeIndex = 3; upType = "mobimage"; }
+                    else if (restype.equals("shot")) { sizeIndex = 4; upType = "mobimage"; }
+                    else if (restype.equals("thumb")) { sizeIndex = 5; upType = "mobthumb"; }
+                    else if (restype.equals("icon")) { sizeIndex = 6; upType = "mobicon"; }
+
+                    for (int i=k; i>0; i--) {                      
+                        fName = Misc.generateUniqueId() + "." + imgFormat;
+                        int ww = (((Integer[])SdkTempCache.xhtmlProfiles.get(i-1))[sizeIndex]).intValue();                         
+                        ImageResize.resample(srcimg, imageDir + imgPath + fName, ww, -1);                        
+                        newimg = ImageIO.read(new File(imageDir + imgPath + fName));
+                        iw = newimg.getWidth(null);
+                        ih = newimg.getHeight(null);
+
+                        sqlstr = "INSERT INTO itemImages VALUES('" + Misc.generateUniqueId() + "','" + unique + "','" + upType + "','" + index + "'"
+                             + ",'" + Misc.makeSqlSafe(imgPath + fName) + "','" + MiscDate.now24sql() + "'"
+                            + ",'" + i + "','" + imageGroup + "','" + iw + "','" + ih + "')";
+                        System.out.println(sqlstr);
+                        query=dbsession.createSQLQuery(sqlstr);
+                    query.executeUpdate();
+                    }
+                }
+                
+            }
+            else if (props3!=null && !props3[0].equals("") && !props3[2].equals("")) {
+                
+                String imgunq = (String) map.get("imgunq");
+                
+                System.out.println("IMG: " + imgunq);
+                
+                if (!imgunq.equals("")) {
+                    
+                    String fName = Misc.generateUniqueId();
+                    props3[2] = props3[2].toLowerCase();
+                    
+                    if (props3[2].endsWith(".gif")) fName += ".gif";
+                    else if (props3[2].endsWith(".png")) fName += ".png";
+                    else fName += ".jpg";              
+                    
+                    FileUtil.writeRawToFile(imageDir + imgPath + fName, props3[0], false);
+                    
+                    sqlstr = "SELECT * FROM itemImages WHERE aUnique='" + imgunq + "'";
+                       query=dbsession.createSQLQuery(sqlstr).addScalar("aPath");
+                   java.util.List result1=query.list();
+                    if (result1.size()>0) {
+                        for(Object o1:result1){
+                          String itemimagepath=o1.toString();
+                        File ff = new File(imageDir + itemimagepath);
+                        System.out.println(ff);
+                        if (ff.exists() && !ff.isDirectory()) ff.delete();
+                    }
+                }
+                    
+                    BufferedImage srcimg = ImageIO.read(new File(imageDir + imgPath + fName));
+                    int iw = srcimg.getWidth(null);
+                    int ih = srcimg.getHeight(null);
+                    
+                    sqlstr = "UPDATE itemImages SET aPath='" + imgPath + fName + "', aWidth='" + iw + "',aHeight='" + ih + "' WHERE aUnique='" + imgunq + "'";
+                    query=dbsession.createSQLQuery(sqlstr);
+                    query.executeUpdate();                  
+                }
+                
+            }
+            
+       }
+}
+else if (!resample.equals("")) {
+    
+    String pic = Misc.hex8Decode(aReq.get("pic"));
+    
+    if (!pic.equals("")) {
+        
+        if (neww.equals("")) neww = "-1";
+        if (newh.equals("")) newh = "-1";
+        int w = -1;
+        int h = -1;    
+        
+        try { w = Integer.parseInt(neww); } catch (NumberFormatException e) {}
+        try { h = Integer.parseInt(newh); } catch (NumberFormatException e) {}
+
+        System.out.println(w + ": " + h);
+
+        if (w>0 || h>0) {
+            try {                
+                String ii = Misc.generateUniqueId() + "." + fileType;                    
+                String newPath = imageDir + imgPath + ii;
+                
+                File org = new File(imageDir + pic);
+                ImageResize.resample(org, newPath, w, h);
+                
+                BufferedImage srcimg = ImageIO.read(new File(newPath));
+                int iw = srcimg.getWidth(null);
+                int ih = srcimg.getHeight(null);
+                
+                if (!repl.equals("1")) {
+                    int index = 1;                     
+                    sqlstr = "SELECT * FROM itemImages WHERE aItemUnique='" + unique + "' ORDER BY aIndex DESC LIMIT 0,1";
+                        query=dbsession.createSQLQuery(sqlstr).addScalar("aIndex");
+                    java.util.List result2=query.list();
+                    if (result2.size()>0) {
+                        for(Object o2:result2){
+                            String itemimageindex=o2.toString();
+                        index = Integer.parseInt(itemimageindex)+1; 
+                        }
+                    }     
+
+                    sqlstr = "INSERT INTO itemImages VALUES('" + Misc.generateUniqueId() + "','" + unique + "','" + imgType + "image','" + index + "','" + Misc.makeSqlSafe("/images/javagames/" + ii) + "','" + MiscDate.now24sql() + "')";
+                    query=dbsession.createSQLQuery(sqlstr);
+                    query.executeUpdate();   
+                } 
+                else { 
+                     sqlstr = "UPDATE itemImages SET aPath='" + imgPath + ii + "', aWidth='" + iw + "', aHeight='" + ih + "' WHERE aPath='" + pic + "'";
+                     query=dbsession.createSQLQuery(sqlstr);
+                    query.executeUpdate();   
+                     org.delete();
+                }
+            } catch (Exception e) {}
+        }
+        
+    }
+}
+else if (!save.equals("")) {
+    Enumeration e = request.getParameterNames();
+    for(;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("ind_")) {
+            sqlstr = "UPDATE itemImages SET aIndex='" + aReq.get(elem) + "' WHERE aImageGroup='" + elem.substring(4) + "'";
+            query=dbsession.createSQLQuery(sqlstr);
+                    query.executeUpdate();   
+        }
+        else if (elem.startsWith("type_")) {
+            sqlstr = "UPDATE itemImages SET aType='" + aReq.get(elem) + "' WHERE aImageGroup='" + elem.substring(5) + "'";
+            query=dbsession.createSQLQuery(sqlstr);
+                    query.executeUpdate();   
+        }
+    }
+    
+   
+}
+else if (!delpic.equals("")) {
+    
+    File ff = null;
+    String runq = aReq.get("runq");        
+    
+    if (!runq.equals("")) {
+        ff = new File(imageDir + Misc.hex8Decode(delpic));
+        if (ff.exists() && !ff.isDirectory()) ff.delete();
+        sqlstr = "UPDATE itemImages SET aPath='',aWidth='0',aHeight='0' WHERE aUnique='" + runq + "'";
+        query=dbsession.createSQLQuery(sqlstr);
+        query.executeUpdate();   
+    }
+    else {
+    
+        sqlstr = "SELECT * FROM itemImages WHERE aImageGroup='" + delpic + "'";
+       query=dbsession.createSQLQuery(sqlstr).addScalar("aPath");
+        java.util.List result3=query.list();
+        for(Object o3:result3) {
+            String itempath=o3.toString();
+            ff = new File(imageDir + itempath);
+            if (ff.exists() && !ff.isDirectory()) ff.delete();
+        }
+
+        sqlstr = "DELETE FROM itemImages WHERE aImageGroup='" + delpic + "'";
+        query=dbsession.createSQLQuery(sqlstr);
+        query.executeUpdate();
+   }
+            
+}
+
+VideoClipDao videoclipdao=null; 
+
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+      
+          videoclipdao=(VideoClipDao) ac.getBean("videoclipdao");  
+     }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+
+
+
+VideoClip item = videoclipdao.getItem(unique);
+//System.out.println("item: " + item);
+Iterator iterator = item.getImageMap().keySet().iterator();
+//System.out.println(iterator);
+java.util.List imageGroups = null;
+java.util.List images = null;
+ItemImageGroup img = null;
+ItemImage im = null;
+
+String tabIndex = "3";
+if (imgType.equals("web")) tabIndex = "2";
+else if (imgType.equals("promo")) tabIndex = "3";
+
+        
+trans.commit();
+dbsession.close();
+%>

@@ -1,0 +1,52 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "iso-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "contentfiles";
+//***************************************************************************************************
+
+String unique = aReq.get("unq");
+
+VideoClipDao videoclipdao=null;
+ItemResourceDao itemresourcedao=null;
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+       itemresourcedao=(ItemResourceDao) ac.getBean("itemresourcesdao");
+       videoclipdao=(VideoClipDao)ac.getBean("videoclipdao");
+ }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+
+String datadir = System.getProperty("contenturl")+"/data/videoclips";
+String statusMsg1 = "";
+
+if (!aReq.get("del").equals("")) {
+
+    Enumeration e = request.getParameterNames();
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("sel_")) itemresourcedao.deleteItem(elem.substring(4));
+    }
+}
+
+VideoClip item = videoclipdao.getItem(unique);
+
+ItemResource res = null;
+java.util.List<ItemResource> list = null;
+
+System.out.println("item: " + item.getResourceMap().size());
+
+
+%>

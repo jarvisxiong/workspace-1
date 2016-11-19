@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd">    
+    <diskStore path="java.io.tmpdir"/>
+    <defaultCache 
+        eternal="false" 
+        maxElementsInMemory="100000"
+        overflowToDisk="false" 
+        diskPersistent="false" 
+        timeToIdleSeconds="0"
+        timeToLiveSeconds="600" 
+        memoryStoreEvictionPolicy="LRU"
+    />
+    <cache 
+        name="org.hibernate.cache.spi.UpdateTimestampsCache"
+        maxElementsInMemory="5000"
+        eternal="false"
+        timeToIdleSeconds="0"
+        timeToLiveSeconds="86400"
+        overflowToDisk="true"
+ 	 />
+ 
+    <cache 
+        name="org.hibernate.cache.internal.StandardQueryCache"
+        maxElementsInMemory="50000"
+        eternal="false"
+        timeToIdleSeconds="0"
+        timeToLiveSeconds="86400"
+        overflowToDisk="true" 
+        /> 
+
+     <cache name="query.itemImages"
+     maxElementsInMemory="50000"
+        
+    eternal="false"
+    timeToLiveSeconds="86400"
+    timeToIdleSeconds="0"
+    overflowToDisk="true" 
+
+    />
+
+    <cache name="query.itemImagesGroup"
+    maxElementsInMemory="50000"
+        
+    eternal="false"
+    timeToLiveSeconds="86400"
+    timeToIdleSeconds="0"
+    overflowToDisk="true" 
+
+    />
+
+             <cache name="query.itemdescriptions"
+             maxElementsInMemory="50000"
+        
+    eternal="false"
+    timeToLiveSeconds="86400"
+    timeToIdleSeconds="0"
+    overflowToDisk="true" 
+
+    />
+             
+          <cache name="query.imageResource"
+          maxElementsInMemory="50000"
+        
+    eternal="false"
+    timeToLiveSeconds="86400"
+    timeToIdleSeconds="0"
+    overflowToDisk="true" 
+
+    />
+    
+ </ehcache>

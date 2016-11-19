@@ -1,0 +1,120 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "alsobought";
+//***************************************************************************************************
+
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+String sqlstr = "";
+String dm = aReq.get("dm");
+String statusMsg = "";
+
+String unique = aReq.get("unq");
+
+String orgTitle = "";
+sqlstr = "SELECT * FROM javaGames WHERE aUnique='" + unique + "'";
+ query=dbsession.createSQLQuery(sqlstr).addScalar("aTitle");
+  java.util.List result=query.list();
+if (result.size()>0) {
+    for(Object o:result){
+        String title=o.toString();
+    orgTitle = Misc.utfToUnicode(title, pageEnc);
+    }
+}
+
+String extrawhere = "";
+
+sqlstr = "SELECT aUserUnique FROM javaGamesLog WHERE aJarUnique='"+unique+"'";
+query=dbsession.createSQLQuery(sqlstr).addScalar("aUserUnique");
+  java.util.List result1=query.list();
+for(Object o1:result1) {
+    String userunique=o1.toString();
+    extrawhere += "javaGamesLog.aUserUnique='"+userunique+"' OR ";
+}
+
+String values[] = null;
+ArrayList list = new ArrayList();
+if( extrawhere.length() > 0 ){
+    extrawhere = extrawhere.substring(0 , extrawhere.length()-3 );
+    sqlstr = "SELECT count(javaGamesLog.aJarUnique) AS cc, javaGamesLog.aJarUnique, javaGames.aTitle, " +
+    "javaImages.aPath, javaGames.aPriceGroup, userGroups.aName ";
+    if( ! dm.equals( "" ) ){
+        sqlstr += ", clientContent.aItemStatus ";
+    }
+    sqlstr += "FROM javaGamesLog INNER JOIN javaGames ON javaGames.aUnique=javaGamesLog.aJarUnique " +
+    "INNER JOIN javaImages ON javaImages.aJavaUnique=javaGamesLog.aJarUnique ";
+    if( ! dm.equals( "" ) ){
+        sqlstr += "INNER JOIN clientContent ON clientContent.aItemUnique = javaGames.aUnique ";
+    }
+    sqlstr += "INNER JOIN userGroups ON javaGames.aOwner = userGroups.aUserGroupUnique ";
+    sqlstr += "WHERE javaGamesLog.aJarUnique != '"+unique+"' " +
+    "AND ( "+ extrawhere+") AND javaImages.aType='promoimg' AND javaImages.aProfile='2' ";
+    if( ! dm.equals( "" ) ){
+        sqlstr += "AND clientContent.aClientUnique='"+ dm +"' ";
+    }
+    sqlstr += "GROUP BY javaGamesLog.aJarUnique ORDER BY cc DESC LIMIT 0, 10";
+
+    System.out.println( sqlstr );
+
+    query=dbsession.createSQLQuery(sqlstr).addScalar("clientContent.aItemStatus").addScalar("javaGamesLog.aJarUnique").addScalar("cc")
+            .addScalar("javaGames.aTitle").addScalar("javaImages.aPath").addScalar("javaGames.aPriceGroup").addScalar("userGroups.aName");
+    java.util.List result2=query.list();
+    String itemStatus = "";
+    for(Object o2:result2) {
+        Object[] row2=(Object[]) o2;
+        if( ! dm.equals("") ){
+            itemStatus = String.valueOf(row2[0]);
+            if (itemStatus.equals("0")) itemStatus = "<span class='red_10'><b>disabled</b></span>";
+            else if (itemStatus.equals("1")) itemStatus = "<span class='green_10'><b>published</b></span>";
+            else if (itemStatus.equals("2")) itemStatus = "<span class='blue_10'><b>hidden</b></span>";
+        }else{ itemStatus = ""; }
+        list.add( 
+            new String[]{ 
+                String.valueOf(row2[1]) ,
+                String.valueOf(row2[2]) ,
+                Misc.utfToUnicode(String.valueOf(row2[3]), pageEnc ),
+                Misc.utfToUnicode(String.valueOf(row2[4]), pageEnc ),
+                String.valueOf(row2[5]),
+                itemStatus,
+                String.valueOf(row2[6])
+            }
+        );
+    }
+
+
+}
+
+java.util.List dms = new ArrayList();
+dms.add( new String[]{ "", "[Select Client]", "", "" });
+sqlstr = "SELECT domains.aDomainUnique,aName,aDefaultUrl,aClientUnique FROM domains INNER JOIN clientDomains ON clientDomains.aDomainUnique=domains.aDomainUnique "
+        + " WHERE domains.aDomainUnique!='fjq32V44EqwaKUb' AND aActive='1'";
+query=dbsession.createSQLQuery(sqlstr).addScalar("aDomainUnique").addScalar("aName").addScalar("aDefaultUrl").addScalar("aClientUnique");
+  java.util.List result2=query.list();
+for(Object o2:result2) {
+    Object[] row2=(Object[]) o2;
+    dms.add( 
+        new String[]{
+            String.valueOf(row2[0]),
+            String.valueOf(row2[1]),
+            String.valueOf(row2[2]),
+            String.valueOf(row2[3])
+        }
+    );
+}
+trans.commit();
+dbsession.close();
+%>

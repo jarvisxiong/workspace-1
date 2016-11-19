@@ -1,0 +1,85 @@
+# GENERAL LANGUAGE FILE FOR ENGLISH
+
+welcome=Willkommen
+credits=Kredite:
+credits2=Kredite
+order=Spiel
+try=Versuch
+more=Mehr
+moregames=Mehr Spiele
+next=Als Nächstes
+previous=Vorhergehend
+back=Back
+start=Anfang
+main=Hauptseite
+home=Home Page
+no_orders=You must first download and test some games to be able to rate them.
+save=Sichern Sie
+morepics=Mehr
+submit=Bestätigen Sie
+up=Herauf
+null=Hauptseite
+morevideos=Mehr
+search=Recherche
+
+game=Spiel
+tone=Musik
+pic=Bild
+listen=Hören Sie
+
+not_supp_title=Phone Not Supported
+not_supp=Unfortunately your phone model is not supported.
+
+bookmark=Bookmark
+bookmark_ok=Bookmark was sent to your phone. You should receive it shortly.
+bookmark_failed=Bookmark could not be sent to your phone. Try again later.
+
+error=Error
+not_found=Item was not found.
+authnerror=Authentication failed.
+
+terms=Bedingungen und Konditionen
+
+moretones=Mehr Musik
+morepics=Mehr Bild
+moreanims=Mehr Animationen
+
+java_games=Spiele
+javagames=Spiele
+polytones=Poly Musik
+tones=Musik
+adult=Erwachsener
+real_tones=Real Tones
+mastertones=Master Tones
+realtones=Real Musik
+truetones=True Musik
+funtruetones=Fun & True Tones
+images=Bilder
+videos=Videos
+themes=Themes
+anims=Animationen
+texts=Texte
+specials=Förderungen
+
+download=Spiel
+subscribe=Unterzeichnen Sie
+buymore=Kaufen Sie mehr Kredite
+
+authnerror_1=
+authnerror_2=
+authnerror_3=Your subscription has ended.
+authnerror_4=
+authnerror_5=You don't have enough credits for this item.
+authnerror_6=You have already downloaded an item today.
+
+enter=Enter!
+
+entercell=Geben Sie Ihre Zellenzahl ein:
+enter_msisdn=Mobile No.
+info_costi=�5
+privacy=Privacy term
+confirm=Confirm
+cancel=Cancel
+unsubscribe=Unsubscribe Successfully
+unsubscribe_error=Error Occure Cannot unsubscibe
+

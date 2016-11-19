@@ -1,0 +1,63 @@
+{% include 'htmlhead' %}
+<body>
+    <div class="pfi uk getjar" id="main">
+         <div class="logo"><!--        -->
+          <a class="logo-holder ui-link" href="#"> <img src="{{contenturl}}/images/wap/584959013814121.jpg" alt="Logo"></a>
+          
+        </div>
+  
+        <div id="left-slide-default">
+          <div> <a class="link-homepage ui-link" href="#"> <i></i></a></div>
+        </div>
+         <div id="videoContent">
+          {% for video in videoList %}
+         
+                           <div class="videoContainer" id="vid-1">
+            <div class="pfi-title-wrapper">
+              <h1 class="bld font-11 pfi-title-yellow"> {{video.description}}  </h1>
+            </div>
+            <div class="video"> <span class="content-price absolute display-none"> </span>
+              <div class="hd-overlay"></div>
+
+{{video.imiParameters}}
+              <div class="length-box"><span class="font-bold">Length: 01:57</span></div>
+                 <div class="clickable-helper"></div>
+              </div>
+            <!-- Video End -->
+            {{pricing}}
+            <div class="fading-details">
+              <!--            <div class="fading"></div>-->
+                            <div class="details">
+                <ul class="metrics">
+                
+                  <li><span class="bottom-text-label"><i class="view-icon"></i></span><i></i>{{video.viewsNumber}}</li>
+                  <li class="green-font-default"><span class="bottom-text-label"><i class="rating-thumb"></i></span><i></i>{{video.ratingNumber}}</li>
+                </ul>
+                <ul class="tags">
+                </ul>
+               
+              </div>
+              <!-- Details End -->
+            </div>
+          </div>
+          
+          {% endfor %}
+               <!-- end of videoContent -->
+         {% include 'category' %}
+        <div class="footer">
+          <div class="button1-yellow"> </div>
+          <div class="button2-yellow"></div>
+        </div>
+        <div class="tc">
+          <div id="esc-pfi-terms">
+            <p>This site uses cookies. Only proceed if you are happy with this, otherwise exit this site.</p>
+            <p>TERMS*</p>
+            <p><u>General Terms of Service:</u><br> Content featured on this site is charged at &pound;6.00 per video stream. This is not a subscription service. After clicking to request content and confirm purchases, users have a 10-minute cooling-off period, during which time purchases may be cancelled by clicking  "Cancel Purchase" or “Exit” as prompted on the content confirmation page. Purchase will be charged direct to your mobile phone bill using Payforit SingleClick. By sharing your mobile number you agree for Moonlight Mobile Ltd to send you either an occasional promotion or related text message, notifying you of our latest offers and promotions available to you. Your data will not be passed to third parties. If you wish to be removed from such contact, please sms STOP to 83463. Alternatively you can call our helpline on 03330030594 or emailcs@payforit-esc.com. This service is provided by Moonlight Mobile Ltd of 1 Bell Street, Maidenhead, SL6 1BU. Telephone: 03330030594 Email: cs@payforit-esc.com. Our policies and procedures are constantly under review in an effort to provide a good level of customer service. From time to time we may update our Terms & Conditions and Privacy Policies to improve the user experience and to comply with legal and regulatory obligations. Therefore, we recommend that you occasionally revisit these terms in order to familiarise yourself with any amendments or changes to service policies. </p>
+          </div>
+        </div>
+         </div>
+</div>
+  
+
+</body>
+</html>

@@ -1,0 +1,165 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "modexturl";
+//***************************************************************************************************
+String imageDir = System.getProperty("document_root") + "/images/javagames/promos/";
+boolean keepOldFormat = true;
+String imgFormat = "gif";
+
+String srvc = aReq.get("srvc");
+String save = aReq.get("save");
+String updpic = Misc.hex8Decode(aReq.get("updpic"));
+String pic = aReq.get("pic");
+String delpic = aReq.get("delpic");
+String restype1 = aReq.get("restype1");
+String restype2 = aReq.get("restype2");
+String restype = "";
+
+String dm = Misc.getCookie("_MXMDOMAINUNIQUE", request);
+String subpage = Misc.getCookie("_MXMSUBPAGEUNIQUE", request);
+
+if (dm.equals("") || srvc.equals("")) { out.println("domain / service missing"); return; }
+
+String sqlstr = "";
+String statusMsg ="";
+String statusMsg2 = "";
+String[] props = null;
+String[] pprops = null;
+String[] gprops = null;
+String[] dprops = null;
+
+String urlcontent = "";
+
+String promoUnique = "";
+boolean resample = false;
+String srvcTitle = "";
+String domainName = "";
+
+Enumeration e = request.getParameterNames();
+for (;e.hasMoreElements();) {
+    String elem = (String) e.nextElement();
+    if (elem.startsWith("res_")) {
+        resample = true;
+        promoUnique = elem.substring(4);
+        restype = restype1;
+        break;
+    }
+    else if (elem.startsWith("res2_")) {
+        resample = true;
+        promoUnique = elem.substring(5) + "_prm";
+        restype = restype2;
+        break;
+    }
+} 
+
+System.out.println("res: " + resample); 
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+
+if (!save.equals("")) { 
+   
+   String exturl = Misc.encodeForDb(aReq.get("exturl")).trim();
+   
+   sqlstr = "UPDATE clientFreeTexts SET aTitle='" + exturl + "' WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+   query=dbsession.createSQLQuery(sqlstr);
+   int stat=query.executeUpdate();
+  
+        
+}
+
+java.util.List dms = new ArrayList();
+sqlstr = "SELECT * FROM domains WHERE aDomainUnique!='fjq32V44EqwaKUb' AND aActive='1'";
+query=dbsession.createSQLQuery(sqlstr).addScalar("aDomainUnique").addScalar("aName");
+java.util.List result=query.list();
+for(Object o:result) {
+    Object [] row=(Object[]) o;
+    String domainunique=String.valueOf(row[0]);
+    String domainname=String.valueOf(row[1]);
+    if (domainunique.equals(dm)) { domainName = domainname; break; }
+}
+
+Hashtable pics = new Hashtable();
+
+if (!dm.equals("") && !srvc.equals("")) {
+      
+    props = new String[3];
+    for (int k=0; k<props.length; k++) props[k] = "";
+
+    sqlstr = "SELECT * FROM clientFreeTexts WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+    System.out.println(sqlstr);
+    query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aTitle");
+    java.util.List result1=query.list();
+    if (result1.size()>0) {
+        for(Object o1:result1)
+                       {
+            Object[] row1=(Object[]) o1;
+        props[0] = String.valueOf(row1[0]);
+        props[1] = Misc.utfToUnicode(String.valueOf(row1[1]), pageEnc);
+               }
+    }
+    else {
+        props[0] = Misc.generateUniqueId();
+        sqlstr = "INSERT INTO clientFreeTexts VALUES('" + props[0] + "','" + srvc + "','" + dm + "','','')";  
+        System.out.println(sqlstr);
+        query=dbsession.createSQLQuery(sqlstr);
+        int stat=query.executeUpdate();
+    }
+    
+    
+}
+
+if (!props[1].equals("") && props[1].startsWith("http://")) {
+
+    String url = props[1];
+    url = Misc.replaceChars(url, "&#63;", "?");
+
+    String path = "";
+    String host = url.substring(7);
+    int port = 80;
+
+    System.out.println("URL: " + url);
+
+
+    if (host.indexOf("/")>-1) {
+        path = host.substring(host.indexOf("/"));
+        host = host.substring(0,host.indexOf("/"));        
+    }
+    else if (host.indexOf("?")>-1) {
+        path = host.substring(host.indexOf("?"));
+        host = host.substring(0,host.indexOf("?"));        
+    }
+    if (host.indexOf(":")>-1) {
+        try { port = Integer.parseInt(host.substring(host.indexOf(":")+1)); } catch (NumberFormatException en) { System.out.println(en); port = 80; }
+        host = host.substring(0,host.indexOf(":"));
+    }
+
+    if (!path.startsWith("/")) path = "/" + path;
+    
+
+    System.out.println("HOST: " + host + ": " + port + path);
+
+    urlcontent = HttpConnection.getData(host, port, path, 5000);
+    System.out.println("DATA: " + urlcontent);
+
+
+}
+
+trans.commit();
+dbsession.close();
+
+
+%>

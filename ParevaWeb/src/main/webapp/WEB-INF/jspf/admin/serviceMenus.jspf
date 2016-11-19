@@ -1,0 +1,159 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeLanguagePropertyDao langpropdao=null;
+UmeTempCache umesdc=null;
+UmeServiceDao umeservicedao=null;
+UmeServiceMenuDao servicemenudao=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+umesdc=(UmeTempCache) ac.getBean("umesdc");
+umeservicedao=(UmeServiceDao) ac.getBean("umeservicedao");
+servicemenudao=(UmeServiceMenuDao) ac.getBean("umeservicemenudao");
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+String sid = aReq.get("sid");
+SdcService sdcs = umesdc.getServiceMap().get(sid);
+if (sdcs==null) return;
+
+java.util.List<SdcServiceMenu> menuList = umesdc.getServiceMenusByService().get(sdcs.getUnique());
+
+SdcServiceMenu sdcmenu = null;
+SdcLanguage sdclang = null;
+
+String statusMsg ="";
+int _curitem = 1;
+
+String sType = aReq.get("stype");
+String menulang = aReq.get("menulang");
+String copylang = aReq.get("copylang");
+String save = aReq.get("save");
+String add = aReq.get("add");
+String delete = aReq.get("delete");
+String copy = aReq.get("copy");
+
+String aindex = aReq.get("add_aIndex");
+String aname = aReq.get("add_aName");
+String atarget = aReq.get("add_aTargetPage");
+
+if (!menulang.equals("")) {
+
+    boolean update = false;
+
+    // Check for root menu
+    boolean foundRoot = false;
+
+    if (menuList!=null) {
+        for (int i=0; i<menuList.size(); i++) {
+            sdcmenu = menuList.get(i);
+            if (sdcmenu.getLanguageCode().equals(menulang) && sdcmenu.getIndex().equals("0")) { foundRoot = true; break; }
+        }
+    }
+    
+    if (!foundRoot) {
+        sdcmenu = new SdcServiceMenu();
+        sdcmenu.setServiceUnique(sdcs.getUnique());
+        sdcmenu.setLanguageCode(menulang);
+        sdcmenu.setIndex("0");
+        sdcmenu.setName(sdcs.getName());
+        sdcmenu.setTargetPage(sdcs.getDefaultPage());
+
+        if (servicemenudao.addItem(sdcmenu)) {
+            update = true;
+            //sdcs.setServiceMenuList(UmeServiceMenuDao.getServiceMenuList(sdcs));
+        }
+    }
+
+
+    if (!save.equals("")) {
+
+        for (int i=0; i<menuList.size(); i++) {
+            sdcmenu = menuList.get(i);
+            if (!sdcmenu.getLanguageCode().equals(menulang)) continue;
+
+            sdcmenu.setIndex(aReq.get("index_" + sdcmenu.getUnique()));
+            sdcmenu.setName(aReq.get("name_" + sdcmenu.getUnique()));
+            sdcmenu.setTargetPage(aReq.get("target_" + sdcmenu.getUnique()));
+            servicemenudao.saveItem(sdcmenu);
+        }
+        update = true;
+        //sdcs.setServiceMenuList(UmeServiceMenuDao.getServiceMenuList(sdcs));
+
+        statusMsg = lp.get(12);
+    }
+    else if (!add.equals("")) {
+
+        if (aindex.equals("") || aname.equals("") || atarget.equals("")) statusMsg = lp.get("fieldsmissing");
+        else if (aindex.equals("0")) statusMsg = lp.get("indexzero");
+        else {
+            sdcmenu = new SdcServiceMenu();
+            sdcmenu.setServiceUnique(sdcs.getUnique());
+            sdcmenu.setLanguageCode(menulang);
+            sdcmenu.setIndex(aindex);
+            sdcmenu.setName(aname);
+            sdcmenu.setTargetPage(atarget);
+
+            if (servicemenudao.addItem(sdcmenu)) {
+                update = true;                
+                //sdcs.setServiceMenuList(UmeServiceMenuDao.getServiceMenuList(sdcs));
+                aindex = "";
+                aname = "";
+                atarget = "";
+            }
+        }
+    }
+    else if (!delete.equals("")) {
+        Enumeration e = request.getParameterNames();
+        for (;e.hasMoreElements();) {
+            String elem = (String) e.nextElement();
+            if (elem.startsWith("sel_")) {
+                servicemenudao.deleteItem(elem.substring(4));
+            }
+        }
+        update = true;        
+        //sdcs.setServiceMenuList(UmeServiceMenuDao.getServiceMenuList(sdcs));
+    }
+    else if (!copy.equals("")) {
+
+        if (copylang.equals("")) statusMsg = lp.get("selectdest");
+        else {
+            if (servicemenudao.copyMenus(sdcs, menulang, copylang)==0) statusMsg = lp.get("copied");
+            update = true;            
+            //sdcs.setServiceMenuList(UmeServiceMenuDao.getServiceMenuList(sdcs));
+        }
+    }
+
+    if (update) {
+        servicemenudao.initializeServiceMenus();
+        menuList = umesdc.getServiceMenusByService().get(sdcs.getUnique());
+    }
+
+}
+
+
+
+%>

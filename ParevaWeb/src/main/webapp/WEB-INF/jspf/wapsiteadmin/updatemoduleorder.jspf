@@ -1,0 +1,43 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+<%
+ AdminRequest aReq = new AdminRequest(request);
+   String itemlist[] = aReq.get("itemlist[]").split(",");
+
+   Query query=null;
+   Transaction trans=dbsession.beginTransaction();
+   String sqlstr = "";
+   
+   for (int i=0; i<itemlist.length; i++) {
+       sqlstr = "UPDATE clientServices SET aIndex='" + i + "' WHERE aUnique='" + itemlist[i] + "'";
+       System.out.println(sqlstr);
+       query=dbsession.createSQLQuery(sqlstr);
+       query.executeUpdate();
+      
+   }
+   
+   ClientDao clientdao=null;
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+      clientdao=(ClientDao) ac.getBean("clientdao");
+     //System.out.println("GLOBAL WAP HEADER TEST HANDSET "+handsetdao);
+      }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+
+   UmeTempCmsCache.clientServices = clientdao.getClientServices();
+   
+   trans.commit();
+   dbsession.close();
+
+
+
+
+
+
+
+
+
+%>

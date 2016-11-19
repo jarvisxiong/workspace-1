@@ -1,0 +1,89 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "iso-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "selpic2";
+//***************************************************************************************************
+
+String statusMsg = "";
+
+String docRoot = System.getProperty("contenturl")+"/www"; //System.getProperty("document_root");
+
+String unique = aReq.get("unq");
+String delpic = aReq.get("delpic");
+
+String contentType = request.getHeader("Content-Type");
+if (contentType==null) contentType="";
+
+if (contentType.startsWith("multipart/form-data")) {
+    
+    String boundary = "";
+    try { boundary = contentType.substring((contentType.indexOf("boundary=")+9)); }
+    catch (IndexOutOfBoundsException e) {}
+
+    int length = 0;
+    try { length = Integer.parseInt(request.getHeader("Content-Length")); }
+    catch (NumberFormatException e) {}
+
+    if (!boundary.equals("") && length>0) {
+        HashMap map = FileUtil.parseMultiPartFormData(length, boundary,
+                   new BufferedLineReader(new InputStreamReader(request.getInputStream(), "iso-8859-1"), 1024));
+
+        unique = (String) map.get("unq");
+
+        String[] props = (String[]) map.get("img");
+        String imgName = ((String) map.get("imgname")).trim();
+
+        if (!props[0].equals("") && !props[2].equals("")) {
+
+            String newid = Misc.generateUniqueId();
+            String fName =  newid;
+            props[2] = props[2].toLowerCase();
+
+            if (props[2].endsWith(".gif")) fName += ".gif";
+            else fName += ".jpg";
+            
+            if (!imgName.equals("")) { 
+                imgName = Misc.replaceUmlauts(imgName);
+                imgName = Misc.replaceChars(imgName, " ", "_");
+                if (Misc.validateFile(imgName)) fName = imgName + "_" + fName;
+            }
+
+            FileUtil.writeRawToFile(docRoot + "/images/wap/source/" + fName, props[0], false);
+
+        }
+    }   
+}
+else if (!delpic.equals("")) {
+    
+    File ff = new File(docRoot + "/images/wap/source/" + Misc.hex8Decode(delpic));
+    System.out.println(ff);
+    if (ff.exists()) ff.delete();
+
+}
+
+
+
+File dir = new File(docRoot + "/images/wap/source/");
+if (!dir.exists()) dir.mkdirs();
+File[] files = dir.listFiles();
+
+System.out.println("files: " + files);
+String fName = "";
+String lowName = "";
+
+
+int cs=2;
+String bgColor="";
+%>
+

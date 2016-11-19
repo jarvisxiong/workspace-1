@@ -1,0 +1,61 @@
+{% if include_header == "true" %}
+{% include 'header' %}
+{% endif %}
+
+
+		  
+		  
+		   {% for video in videos %}
+		  
+          <div class="videoContainer" >
+            <div class="pfi-title-wrapper">
+              <h1 class="bld font-11 pfi-title-yellow"> <span> {{video.gtitle}} </span> </h1>
+            </div>
+            <div class="video"> <span class="content-price absolute display-none"> </span>
+              <div class="hd-overlay"></div>
+             <div class="playicon-on-video"></div>
+             <img class="thumbnail videoCover" src="{{video.img}}" alt="Video cover">
+
+              <div class="length-box"><span class="font-bold">Length: {{length_2}}</span></div>
+              <a class="billable block ui-link" title="2_224675" data-clickable="true" href="videodetail.jsp?unq={{video.props}}" data-reference="141663732548057900520" data-content-id="c_224675" data-serviceid="188" data-content-location="#">
+              <div class="clickable-helper"></div>
+              </a></div>
+            <!-- Video End -->
+            <div class="fading-details">
+              <!--            <div class="fading"></div>-->
+              
+              <div class="details">
+                <ul class="metrics">
+                  <li><span class="bottom-text-label">Video Info </span><i></i></li>
+                  <li><span class="bottom-text-label"><i class="view-icon"></i></span><i></i>{{video.viewsNumber}}</li>
+                  <li class="green-font-default"><span class="bottom-text-label"><i class="rating-thumb"></i></span><i></i>{{video.ratingNumber}}</li>
+                </ul>
+                <ul class="tags">
+                </ul>
+                
+              </div>
+              <!-- Details End -->
+            </div>
+          </div>
+          <!-- end of videoContainer -->
+          {% endfor %}
+        <!-- end of videoContent -->
+        
+        {% if pageCount > 1 %}
+			
+			 {% if curPage > 1 %}
+			 	<a href="promo_hot_video_category.jsp?ind={{(curPage-2)*maxCount}}&amp;number_of_category=0&amp;include_header=true">&lt;&lt;previous</a>
+			{% endif %}
+			
+			 {% if (pageCount-curPage)>0 %}
+			 	<a href="promo_hot_video_category.jsp?ind={{curPage*maxCount}}&amp;number_of_category=0&amp;include_header=true">next&gt;&gt;</a>
+			{% endif %}
+			
+		{% endif %}         
+        
+         
+ 
+ {% if number_of_category == 0 %}
+{% include 'footer' %}
+{% endif %}         
+        

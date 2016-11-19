@@ -1,0 +1,72 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeTempCache umesdc=null;
+UmeLanguagePropertyDao langpropdao=null;
+UmeCategoryDao umecategorydao=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+umesdc=(UmeTempCache) ac.getBean("umesdc");
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+umecategorydao=(UmeCategoryDao) ac.getBean("umecategorydao");
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+String ctid = aReq.get("ctid");
+UmeCategory item = umesdc.getCategoryMap().get(ctid);
+if (item==null) return;
+
+java.util.List<UmeUserGroup> list = umesdc.getUserGroupList();
+
+UmeUserGroup group = null;
+UmeUserGroup subgroup = null;
+UmeDomain sdcd = null;
+SdcLanguage sdclang = null;
+
+String statusMsg="";
+int _curitem = 1;
+
+String save = aReq.get("save");
+
+if (!save.equals("")) {
+    
+    item.setUserGroups("");
+
+    Enumeration e = request.getParameterNames();
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("sel_")) {
+            if (!item.getUserGroups().equals("")) item.setUserGroups(item.getUserGroups() + "?");
+            item.setUserGroups(item.getUserGroups() + elem.substring(4));
+        }
+    }
+
+    umecategorydao.saveItem(item);
+
+    statusMsg = lp.get(1);
+
+}
+
+%>

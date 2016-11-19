@@ -1,0 +1,111 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "descriptions";
+//***************************************************************************************************
+String sqlstr = "";
+String statusMsg = "";
+
+String unique = aReq.get("unq");
+String save = aReq.get("save");
+String langCode = aReq.get("langcode", "EN");
+
+String[][] langs = new String[11][2];
+langs[0][0] = "English"; langs[0][1] = "EN";
+langs[1][0] = "Swedish"; langs[1][1] = "SV";
+langs[2][0] = "Finnish"; langs[2][1] = "FI";
+langs[3][0] = "Danish"; langs[3][1] = "DA";
+langs[4][0] = "French"; langs[4][1] = "FR";
+langs[5][0] = "Italian"; langs[5][1] = "IT";
+langs[6][0] = "German"; langs[6][1] = "DE";
+langs[7][0] = "Spanish"; langs[7][1] = "ES";
+langs[8][0] = "Portuguese"; langs[8][1] = "PT";
+langs[9][0] = "Greek"; langs[9][1] = "EL";
+langs[10][0] = "Russian"; langs[10][1] = "RU";
+
+
+String title = "";
+String punch = "";
+String dshort = "";
+String dlong = "";
+String verylong = "";
+String pic1 = "";
+String pic2 = "";
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+
+if (!save.equals("")) {
+    
+    title = aReq.get("title");
+    punch = aReq.get("punch");
+    dshort = aReq.get("short");
+    dlong = aReq.get("long");
+    verylong = aReq.get("verylong");
+    pic1 = aReq.get("pic1");
+    
+    sqlstr = "UPDATE itemDescriptions SET aTitle='" + Misc.encodeForDb(title) + "',aPunch='" + Misc.encodeForDb(punch) + "'"
+            + ",aShort='" + Misc.encodeForDb(dshort) + "'"
+            + ",aLong='" + Misc.encodeForDb(dlong) + "',aVeryLong='" + Misc.encodeForDb(verylong) + "',aPic1='" + Misc.encodeForDb(pic1) + "'"
+            + " WHERE aItemUnique='" + unique + "' AND aLangCode='" + langCode.toLowerCase() + "' AND aType='desc'";
+    
+        query=dbsession.createSQLQuery(sqlstr);
+        query.executeUpdate();
+    
+    //ServerParam.reloadJavaDescriptions();
+    
+}
+
+if (!langCode.equals("")) {
+    
+    sqlstr = "SELECT * FROM itemDescriptions WHERE aItemUnique='" + unique + "' AND aLangCode='" + langCode.toLowerCase() + "' AND aType='desc'";
+   query=dbsession.createSQLQuery(sqlstr).addScalar("aTitle").addScalar("aPunch").addScalar("aShort").addScalar("aLong")
+           .addScalar("aVeryLong").addScalar("aPic1");
+    java.util.List result=query.list();
+    if (result.size()>0) {
+        for(Object o:result){
+            Object[] row=(Object[]) o;
+        title = String.valueOf(row[0]);
+        punch = String.valueOf(row[1]);
+        dshort = String.valueOf(row[2]);
+        dlong = String.valueOf(row[3]);
+        verylong = String.valueOf(row[4]);
+        pic1 = String.valueOf(row[5]);
+        }
+    }
+    else {
+        sqlstr = "INSERT INTO itemDescriptions VALUES ('" + Misc.generateUniqueId() + "','" + unique + "','desc','','','','','',''"
+                + ",'" + langCode.toLowerCase() + "','" + MiscDate.now24sql() + "')";
+        query=dbsession.createSQLQuery(sqlstr);
+        query.executeUpdate();
+    }
+    
+}
+
+String orgTitle = "";
+sqlstr = "SELECT * FROM videoClips WHERE aUnique='" + unique + "'";
+query=dbsession.createSQLQuery(sqlstr).addScalar("aTitle");
+java.util.List result1=query.list();
+if (result1.size()>0) {
+    for(Object o1:result1){
+        String videocliptitle=o1.toString();
+    orgTitle = Misc.utfToUnicode(videocliptitle, pageEnc);
+    }
+}
+
+
+trans.commit();
+dbsession.close();
+
+%>

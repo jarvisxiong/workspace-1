@@ -1,0 +1,155 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "linkgames";
+//***************************************************************************************************
+String sqlstr = "";
+String statusMsg = "";
+String unique = aReq.get("unq");
+
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+
+
+String orgTitle = "";
+sqlstr = "SELECT * FROM javaGames WHERE aUnique='" + unique + "'";
+query=dbsession.createSQLQuery(sqlstr).addScalar("aTitle");
+java.util.List result=query.list();
+
+if (result.size()>0) {
+    for(Object o:result){
+        String javagametitle=o.toString();
+    orgTitle = Misc.utfToUnicode(javagametitle, pageEnc);
+    }
+}
+
+String insert_sql = "";
+String delete_sql = "";
+
+String search_query = aReq.get("searchbox"); 
+if( !aReq.get("listall").equals("") )search_query = "";
+if( !aReq.get("switch").equals("") ){
+    Enumeration en = request.getParameterNames();
+    String ene = "";
+    for (; en.hasMoreElements(); ){
+        ene = (String)en.nextElement();
+        if( ene.startsWith("chk_") ){
+            insert_sql += "('"+Misc.generateUniqueId()+"','"+ ene.substring( 4 ) +"','"+unique+"'),";
+        }
+        else if( ene.startsWith("unchk_")){
+            delete_sql += "(aGame1='"+ ene.substring( 6 ) +"' AND aGame2='"+unique+"') OR " +
+            "( aGame1='" + unique + "' AND aGame2='"+ ene.substring( 6 ) + "' ) OR ";
+            
+        }
+    }
+   
+}
+
+if( insert_sql.length() > 0 ){
+    insert_sql = "INSERT INTO javaGamesLinks VALUES " + insert_sql.substring( 0 , insert_sql.length() - 1);
+    query=dbsession.createSQLQuery(sqlstr);
+    query.executeUpdate();
+     search_query ="";
+}
+if( delete_sql.length() > 0){
+    delete_sql = "DELETE FROM javaGamesLinks WHERE (" + delete_sql.substring( 0 , delete_sql.length() - 3 ) + ")";
+    query=dbsession.createSQLQuery(sqlstr);
+    query.executeUpdate();
+     search_query ="";
+}
+
+
+String extrawhere = "";
+
+String values[] = null;
+
+ArrayList selectedList = new ArrayList();
+
+sqlstr = "SELECT javaGames.aUnique, javaGames.aTitle, itemImages.aPath " +
+"FROM javaGamesLinks " +
+"INNER JOIN javaGames ON (javaGames.aUnique=javaGamesLinks.aGame2  OR javaGames.aUnique=javaGamesLinks.aGame1 )" +
+"INNER JOIN itemImages ON itemImages.aItemUnique = javaGames.aUnique " +
+"WHERE ( javaGamesLinks.aGame1='"+unique+"' OR javaGamesLinks.aGame2='"+unique+"' ) " +
+"AND itemImages.aType='promoimage' AND itemImages.aProfile='2' " +
+"AND javaGames.aUnique <> '" + unique + "' ";
+
+
+System.out.println( sqlstr );
+
+query=dbsession.createSQLQuery(sqlstr).addScalar("javaGames.aUnique").addScalar("javaGames.aTitle").addScalar("itemImages.aPath");
+java.util.List result1=query.list();
+for(Object o1:result1) {
+    Object[] row1=(Object[]) o1;
+    selectedList.add( 
+        new String[]{ 
+            String.valueOf(row1[0]) ,
+            Misc.utfToUnicode(String.valueOf(row1[1]), pageEnc ),
+            Misc.utfToUnicode(String.valueOf(row1[2]), pageEnc )
+        }
+    );
+    extrawhere += "javaGames.aUnique <> '"+ String.valueOf(row1[0])+"' AND ";
+}
+
+ArrayList fullList = new ArrayList();
+
+sqlstr = "SELECT javaGames.aUnique, javaGames.aTitle, itemImages.aPath " +
+"FROM javaGames INNER JOIN itemImages ON itemImages.aitemUnique=javaGames.aUnique " +
+"WHERE ";
+if( extrawhere.length() > 0 ){
+extrawhere = extrawhere.substring(0, extrawhere.length() - 4 );
+sqlstr += "( " + extrawhere + " ) AND ";
+}
+sqlstr +=" itemImages.aType='promoimage' AND itemImages.aProfile='2' " +
+"AND javaGames.aUnique <> '"+ unique+ "' ";
+if( !search_query.equals("") ){
+    sqlstr += "AND javaGames.aTitle LIKE '%"+ Misc.encodeForDb( search_query, pageEnc ) +"%' ";
+  
+}
+sqlstr += "ORDER BY javaGames.aCreated DESC ";
+
+query=dbsession.createSQLQuery(sqlstr).addScalar("javaGames.aUnique").addScalar("javaGames.aTitle").addScalar("itemImages.aPath");
+java.util.List result2=query.list();
+for(Object o2:result2){
+    Object[] row2=(Object[]) o2;
+    fullList.add( 
+        new String[]{ 
+            String.valueOf(row2[0]) ,
+            Misc.utfToUnicode( String.valueOf(row2[1]), pageEnc ),
+            Misc.utfToUnicode(String.valueOf(row2[2]), pageEnc )
+        }
+    );
+}
+
+ArrayList allGames = new ArrayList();
+sqlstr = "SELECT javaGames.aTitle FROM javaGames WHERE aUnique <> '" + unique + "'";
+if( extrawhere.length() > 0 ){
+    sqlstr += " AND ( " + extrawhere + " )";
+}
+query=dbsession.createSQLQuery(sqlstr).addScalar("aTitle");
+java.util.List result3=query.list();
+for(Object o3:result3){
+    String javagamestitle=o3.toString();
+    allGames.add( Misc.utfToUnicode( javagamestitle, pageEnc ) );
+}
+        
+
+String noneselectedid = "noneselected";
+String noneselectedtext = "This game has no links.";
+String noneselectedheight = "60%";
+trans.commit();
+dbsession.close();
+
+%>

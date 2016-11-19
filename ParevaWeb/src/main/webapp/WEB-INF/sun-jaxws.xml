@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<endpoints version="2.0" xmlns="http://java.sun.com/xml/ns/jax-ws/ri/runtime">
+  <endpoint implementation="ume.pareva.webservice.UserStopServiceImpl" name="UMEStopService" url-pattern="/UMEStopService"/>
+  <endpoint implementation="ume.pareva.webservice.MelodyAPIImpl" name="UMEWebService" url-pattern="/UMEWebService"/>
+  <endpoint implementation="ume.pareva.webservice.FFMpegEncoderServiceImpl" name="FFMpegEncoderService" url-pattern="/FFMpegEncoderService"/>
+	<endpoint implementation="ume.pareva.webservice.VideoListServiceImpl" name="VideoListService" url-pattern="/VideoListService"/>
+	
+</endpoints>

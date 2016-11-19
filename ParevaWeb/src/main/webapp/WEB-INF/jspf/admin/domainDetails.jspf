@@ -1,0 +1,191 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+String templateName="";
+String templateLocation="";
+String templateSuffix="";
+String regionid="";
+String templateStaticFolder="";
+
+UmeDomainDao umedomaindao=null;
+UmeTempCache anyxsdc=null;
+UmeLanguagePropertyDao langpropdao=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+umedomaindao=(UmeDomainDao) ac.getBean("umedomaindao");
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+anyxsdc=(UmeTempCache) ac.getBean("umesdc");
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+
+
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+
+
+String dmid = aReq.get("dmid");
+UmeDomain sdcd = anyxsdc.getDomainMap().get(dmid);
+if (sdcd==null) return;
+
+UmeDomain dd = null;
+SdcPackage sdcpack = null;
+SdcPackage dmpack = null;
+SdcLanguage sdclang = null;
+SdcService sdcservice = null;
+
+String statusMsg="";
+Query query=null;
+String sqlstr="";
+Transaction trans=dbsession.beginTransaction();
+
+sqlstr="select aRegion from mobileClubs where aWapDomain='"+dmid+"'";
+System.out.println("Region Query: "+sqlstr);
+query=dbsession.createSQLQuery(sqlstr).addScalar("aRegion");
+java.util.List regionList=query.list();
+for(Object o:regionList){
+	regionid=o.toString();
+}
+
+
+
+
+
+
+if (!aReq.get("save").equals("")) {
+
+    
+    String name = aReq.get("aName");
+    if (name.equals("")) statusMsg = lp.get(5);
+    else {
+
+        sdcd.setName(name);
+        sdcd.setActive(Integer.parseInt(aReq.get("aActive", "0")));
+        sdcd.setKey(aReq.get("aKey"));
+        sdcd.setDefaultUrl(aReq.get("aDefUrl"));
+        sdcd.setAliasUrl1(aReq.get("aAliasUrl1"));
+        sdcd.setAliasUrl2(aReq.get("aAliasUrl2"));
+         
+        sdcd.setaAliasUrlList(aReq.get("aAliasUrlList"));
+ 
+        sdcd.setPartnerDomain(aReq.get("aPartnerDomain"));
+        sdcd.setDefaultLang(aReq.get("aDefLang"));
+        sdcd.setUseHomeDir(Integer.parseInt(aReq.get("aUseHomeDir", "0")));
+        sdcd.setDefPublicDir(aReq.get("aDefPublicDir"));
+        sdcd.setDefPublicPage(aReq.get("aDefPublicPage"));
+        sdcd.setDefPrivateDir(aReq.get("aDefPrivateDir"));
+        sdcd.setDefPrivatePage(aReq.get("aDefPrivatePage"));
+        sdcd.setDefSmsNumber(aReq.get("aDefNumber"));
+        sdcd.setDefSmsSrvc(aReq.get("aDefSmsSrvc"));
+        sdcd.setSmsErrorSrvc(aReq.get("aSmsErrorSrvc"));
+        sdcd.setWapIps(aReq.get("aWapIps", "0"));
+        sdcd.setMsisdnHeaders(aReq.get("aMsisdnHeaders").trim().toLowerCase());
+        sdcd.setMsisdnHeader2(aReq.get("aMsisdnHeader2"));
+        sdcd.setMsisdnHeader3(aReq.get("aMsisdnHeader3"));
+        sdcd.setMsisdnHeader4(aReq.get("aMsisdnHeader4"));
+        sdcd.setMsisdnHeader5(aReq.get("aMsisdnHeader5"));
+        sdcd.setDescription(aReq.get("aDescription"));
+        sdcd.setUseDefault(Integer.parseInt(aReq.get("aDefValues", "0")));
+        sdcd.setDefaultPage(aReq.get("aDefPage"));
+        sdcd.setDefaultHost(aReq.get("aDefHost"));
+        sdcd.setDefaultIp(aReq.get("aDefIp"));
+        sdcd.setDefaultPort(aReq.get("aDefPort"));
+        sdcd.setReadTimeout(aReq.get("aTimeout"));
+        sdcd.setModified(new Date());
+        //sdcd.setaContentUrl(aReq.get("aContentUrl"));
+
+        sdcd.getPackageList().clear();
+
+        Enumeration e = request.getParameterNames();
+
+        for (;e.hasMoreElements();) {
+            String elem = (String) e.nextElement();
+            if (elem.startsWith("pack_")) {
+                sdcpack = anyxsdc.getPackageMap().get(elem.substring(5));
+                if (sdcpack!=null) sdcd.getPackageList().add(sdcpack);
+            }
+        }
+
+        so.l("PACK: " + sdcd.getPackageList());
+
+        umedomaindao.saveDomain(sdcd);
+
+        umedomaindao.initializeDomains();
+
+        
+        /* sqlstr = "SELECT count(*) as count FROM domainsTemplates WHERE aDomainUnique='" + dmid + "'";
+        int count = 0;
+        query=dbsession.createSQLQuery(sqlstr).addScalar("count");
+        java.util.List countList=query.list();
+
+        for(Object o1:countList)
+                    {
+        		String row1=o1.toString();
+        		count = Integer.parseInt(String.valueOf(row1)); 
+                                        System.out.println("COUNTING BG : "+count);
+        	}
+        if(count==0){
+        	sqlstr = "INSERT INTO domainsTemplates VALUES('" + Misc.generateUniqueId() + "','" + dmid + "','" + aReq.get("templateLocation") + "'"
+                    + ",'" + aReq.get("templateSuffix") + "','" + regionid + "','" + aReq.get("templateName") + "','A','"+ aReq.get("templateStaticFolder") +"')";
+        	System.out.println("DomainsTemplates Insert Query = "+sqlstr);
+        	query=dbsession.createSQLQuery(sqlstr);
+            int status=query.executeUpdate();
+        
+        }else{
+        	sqlstr="update domainsTemplates set templateFolder='"+aReq.get("templateLocation") + "',suffix='" + aReq.get("templateSuffix") + "',templateName='" + aReq.get("templateName") + "',templateStaticFolder='" + aReq.get("templateStaticFolder") + "' where aDomainUnique='" + dmid + "'";
+        	System.out.println("DomainsTemplates Update Query = "+sqlstr);
+        	query=dbsession.createSQLQuery(sqlstr);
+            int status=query.executeUpdate();		
+        } */
+        
+        statusMsg = lp.get(1);
+        
+        
+        
+    }
+}
+
+sqlstr = "SELECT templateFolder,suffix,templateName,templateStaticFolder FROM domainsTemplates WHERE aDomainUnique='" + dmid + "'";
+System.out.println("domainTemplate query: "+sqlstr);
+query=dbsession.createSQLQuery(sqlstr).addScalar("templateFolder").addScalar("suffix").addScalar("templateName").addScalar("templateStaticFolder");
+java.util.List templateList=query.list();
+
+for(Object o:templateList)
+            {
+	Object[] row=(Object[]) o;
+    templateLocation = String.valueOf(row[0]);
+    templateSuffix = String.valueOf(row[1]);
+    templateName = String.valueOf(row[2]);
+    templateStaticFolder=String.valueOf(row[3]);
+	
+	}
+
+
+trans.commit();
+dbsession.close();
+String bgColor="#EEEEEE";
+
+
+
+
+%>

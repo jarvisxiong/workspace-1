@@ -1,0 +1,30 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "iso-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "del";
+//***************************************************************************************************
+
+String iGroup = aReq.get("igroup");
+String picid = aReq.get("picid");
+String itype = aReq.get("itype");
+String runq = aReq.get("runq");
+String unique = aReq.get("unq");
+//String fp = aReq.get("fp");
+String imgPage = "images.jsp";
+//if (fp.equals("web")) imgPage = "webimages.jsp";
+//else if (fp.equals("promo")) imgPage = "promoimages.jsp";
+
+int cs=4;
+String bgColor="";
+%>

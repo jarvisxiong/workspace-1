@@ -1,0 +1,17 @@
+<html>
+<body>
+<div id="message">
+{{errorMessage}}
+</div>
+<form id="form1" method="post" action="login.jsp">
+
+Username: <input type="text" id="username" name="username" value="">
+Password: <input type="password" id="password" name="password" value="">
+<input type="submit" id="login" name="login" value="Login">
+</form>
+
+{% if retry==3 %}
+	<a href="sendPassword.jsp">Resend Password</a>
+{% endif %}
+</body>
+</html>

@@ -1,0 +1,325 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String adminGroup = aReq.getAdminGroup();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "index";
+//***************************************************************************************************
+String imageDir = System.getProperty("document_root") + "/images/javagames/promos/";
+
+String sqlstr = "";
+String statusMsg ="";
+String[] props = null;
+String demo = "";
+String adultcontent = "";
+String client = "";
+String domainlink = "";
+String sublink = "";
+Map params = null;
+
+String[][] scats = new String[7][2];
+scats[0][0]= "General"; scats[0][1]= "ADC1206625351115";
+scats[1][0]= "Java Games"; scats[1][1]= "AAB1151391710156";
+scats[2][0]= "Videos"; scats[2][1]= "ADC1211964213751";
+scats[3][0]= "Master Tones"; scats[3][1]= "ADC1206625351114";
+scats[4][0]= "Images"; scats[4][1]= "ADC1206625351116";
+scats[5][0]= "Poly Tones"; scats[5][1]= "";
+//scats[6][0]= "True Tones"; scats[6][1]= "1019977323421CDA";
+scats[6][0]= "Fonecta"; scats[6][1]= "9228805798921CDS";
+
+List slist = null;
+List list = new ArrayList();
+List modules = new ArrayList();
+boolean foundDomain = false;
+List dms = new ArrayList();
+List sublist = new ArrayList();
+
+String dm = aReq.get("dm");
+String subpage = aReq.get("subpage");
+String add = aReq.get("add");
+String addsub = aReq.get("addsub");
+String save = aReq.get("ss");
+String addSrvc = aReq.get("addsrvc");
+int ind = Integer.parseInt(aReq.get("ind","1"));
+String cmd = aReq.get("cmd");
+String srvc = aReq.get("srvc");
+String newsub = aReq.get("newsub");
+
+Cookie ck = null;
+
+if (dm.equals("")) {
+    dm = Misc.getCookie("_MXMDOMAINUNIQUE", request);
+    subpage = Misc.getCookie("_MXMSUBPAGEUNIQUE", request);
+}
+
+if (dm.equals("null")) dm = "";
+
+ck = new Cookie("_MXMDOMAINUNIQUE", dm);
+ck.setMaxAge(-1);
+ck.setPath("/");
+response.addCookie(ck);    
+
+ck = new Cookie("_MXMSUBPAGEUNIQUE", subpage);
+ck.setMaxAge(-1);
+ck.setPath("/");
+response.addCookie(ck);
+
+String dividerColor1 = "#000000";
+String dividerColor2 = "#FFFFFF";
+
+
+if (!add.equals("")) {
+
+    if (!addSrvc.equals("")) {
+
+        int nextInd = 1;
+        sqlstr = "SELECT * FROM clientServices WHERE aDomain='" + dm + "' ORDER BY aIndex DESC LIMIT 0,1";
+        rs = DBHStatic.getRs(con, sqlstr);
+        if (rs.next()) { nextInd = rs.getInt("aIndex") + 1; }
+        rs.close();
+
+        String title = Misc.hex8Decode(addSrvc.substring(addSrvc.indexOf("_")+1));
+        addSrvc = addSrvc.substring(0,addSrvc.indexOf("_"));
+
+        sqlstr = "INSERT INTO clientServices VALUES('" + Misc.generateUniqueId() + "','" + dm + "','" + addSrvc + "'"
+                + ",'" + Misc.encodeForDb(title) + "','" + nextInd + "','1','#FFFFFF','#000000','" + subpage + "')";
+        DBHStatic.execUpdate(con, sqlstr);
+
+        UmeTempCmsCache.clientServices = CmsDaoFactory.getClientDao().getClientServices();
+        //AppServerParameters.reloadClientServices();
+    }
+}
+else if (!addsub.equals("")) {
+    
+    if (!newsub.equals("")) {
+        subpage = Misc.generateUniqueId();
+
+        sqlstr = "INSERT INTO clientSubPages VALUES('" + subpage + "','" + dm + "','" + Misc.encodeForDb(newsub) + "')";
+        System.out.println(sqlstr);
+        DBHStatic.execUpdate(con, sqlstr);
+
+        if (newsub.equals("subscribe")) {
+            DomainParameterDao.saveItem(newsub, dm, subpage, con);
+            UmeTempCmsCache.domainParameters = DomainParameterDao.loadAllDomains();
+        }
+
+        statusMsg = "New sub page added";
+        newsub = "";
+
+        ck = new Cookie("_MXMSUBPAGEUNIQUE", subpage);
+        ck.setMaxAge(-1);
+        ck.setPath("/");
+        response.addCookie(ck);
+
+        InitCmsParameters.reloadSubPageTypes();
+    }
+}
+else if (cmd.equals("del")) {
+
+    sqlstr = "UPDATE clientServices SET aIndex=(aIndex-1) WHERE aDomain='" + dm + "' AND aIndex>'" + ind + "'";
+    DBHStatic.execUpdate(con, sqlstr);
+
+    sqlstr = "DELETE FROM clientServices WHERE aUnique='" + srvc + "'";
+    DBHStatic.execUpdate(con, sqlstr);
+
+    String punq = "";
+
+    sqlstr = "SELECT * FROM clientPromoPages WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+    rs = DBHStatic.getRs(con, sqlstr);
+    while (rs.next()) {
+        punq = rs.getString("aPromoUnique");
+        sqlstr = "SELECT * FROM clientPromoImages WHERE aPromoUnique='" + punq + "'";
+        rs2 = DBHStatic.getRs(con, sqlstr);
+        while (rs2.next()) {
+            File oldimg = new File(imageDir + rs2.getString("aImage"));
+            if (oldimg.exists() && !oldimg.isDirectory()) oldimg.delete();
+        }
+        rs2.close();
+        sqlstr = "DELETE FROM clientPromoImages WHERE aPromoUnique='" + punq + "'";
+        DBHStatic.execUpdate(con, sqlstr);
+    }
+    rs.close();
+    sqlstr = "DELETE FROM clientPromoPages WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+    DBHStatic.execUpdate(con, sqlstr);
+
+    sqlstr = "SELECT * FROM clientContests WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+    rs = DBHStatic.getRs(con, sqlstr);
+    while (rs.next()) {
+        punq = rs.getString("aUnique");
+        sqlstr = "SELECT * FROM clientPromoImages WHERE aPromoUnique='" + punq + "'";
+        rs2 = DBHStatic.getRs(con, sqlstr);
+        while (rs2.next()) {
+            File oldimg = new File(imageDir + rs2.getString("aImage"));
+            if (oldimg.exists() && !oldimg.isDirectory()) oldimg.delete();
+        }
+        rs2.close();
+        sqlstr = "DELETE FROM clientPromoImages WHERE aPromoUnique='" + punq + "'";
+        DBHStatic.execUpdate(con, sqlstr);
+    }
+    rs.close();
+    sqlstr = "DELETE FROM clientContests WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+    DBHStatic.execUpdate(con, sqlstr);
+    
+    sqlstr = "DELETE FROM clientFreeTexts WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+    DBHStatic.execUpdate(con, sqlstr);
+
+    UmeTempCmsCache.clientServices = CmsDaoFactory.getClientDao().getClientServices();
+    //AppServerParameters.reloadClientServices();
+}
+else if (!save.equals("")) {
+
+    String unq = "";
+    String bg = "";
+    String font = "";
+
+    Enumeration e = request.getParameterNames();
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("title_")) {
+            unq = elem.substring(6);
+            bg = Misc.encodeForDb(aReq.get("bg_" + unq));
+            font = Misc.encodeForDb(aReq.get("font_" + unq));
+
+            sqlstr = "UPDATE clientServices SET aTitle='" + Misc.encodeForDb(aReq.get(elem)) + "'"
+                    + ",aStatus='" + aReq.get("act_" + unq, "0") + "'"
+                    + ",aBackground='" + bg + "',aFont='" + font + "' WHERE aUnique='" + unq + "'";
+            //System.out.println(sqlstr);
+            DBHStatic.execUpdate(con, sqlstr);
+        }
+    }
+
+    DomainParameterDao.saveItem("adultcontent", dm, aReq.get("adultcontent", "0"), con);
+    DomainParameterDao.saveItem("demo", dm, aReq.get("demo", "0"), con);
+    DomainParameterDao.saveItem("css", dm, aReq.get("css"), con);
+    DomainParameterDao.saveItem("title", dm, aReq.get("title"), con);
+    DomainParameterDao.saveItem("classification", dm, aReq.get("classification"), con);
+    UmeTempCmsCache.domainParameters = DomainParameterDao.loadAllDomains();
+
+    UmeTempCmsCache.clientServices = CmsDaoFactory.getClientDao().getClientServices();
+
+    //AppServerParameters.reloadClientServices();
+
+}
+
+
+sqlstr = "SELECT dm.aDomainUnique,dm.aName,aDefaultUrl,aClientUnique FROM domains dm INNER JOIN clientDomains cd ON cd.aDomainUnique=dm.aDomainUnique "
+        + " INNER JOIN userGroups ug ON ug.aUserGroupUnique=cd.aClientUnique"
+        + " WHERE dm.aActive='1' AND ug.aActive='1'";
+        //+ " WHERE dm.aDomainUnique!='fjq32V44EqwaKUb' AND dm.aActive='1' AND ug.aActive='1' AND dm.aWapIps='1'";
+if (!UmeTempCmsCache.isSystemAdmin(adminGroup)) sqlstr += " AND cd.aClientUnique='" + ugid + "'";
+System.out.println(sqlstr);
+rs = DBHStatic.getRs(con, sqlstr);
+while (rs.next()) {
+    props = new String[4];
+    props[0] = rs.getString("aDomainUnique");
+    props[1] = rs.getString("aName");
+    props[2] = rs.getString("aDefaultUrl");
+    props[3] = rs.getString("aClientUnique");
+    dms.add(props);
+    if (dm.equals(props[0])) foundDomain = true;
+}
+
+System.out.println("DOMAIN: " + dm);
+
+if (!dm.equals("")) {
+
+    /*
+    // initialize clientSubPages
+    sqlstr = "SELECT * FROM clientSubPages WHERE aDomain='" + dm + "' AND aTitle='Main Page'";
+    rs = DBHStatic.getRs(con, sqlstr);
+    if (!rs.next()) {
+        subpage = Misc.generateUniqueId();
+        sqlstr = "INSERT INTO clientSubPages VALUES('" + subpage + "','" + dm + "','Main Page')";
+        DBHStatic.execUpdate(con, sqlstr);
+        sqlstr = "UPDATE clientServices SET aSubPage='" + subpage + "' WHERE aDomain='" + dm + "'";
+        DBHStatic.execUpdate(con, sqlstr);
+    }
+    rs.close();
+    */
+    sqlstr = "SELECT * FROM clientSubPages WHERE aDomain='" + dm + "' ORDER BY aTitle";
+    rs = DBHStatic.getRs(con, sqlstr);
+    while (rs.next()) {
+        props = new String[3];
+        props[0] = rs.getString("aUnique");
+        props[1] = rs.getString("aDomain");
+        props[2] = rs.getString("aTitle");        
+        sublist.add(props);
+    }
+    rs.close();
+
+    params = UmeTempCmsCache.domainParameters.get(dm);
+    System.out.println("PPPP: " + params);
+    if (params==null) params = new HashMap();
+    if (params.get("adultcontent")==null) params.put("adultcontent", "0");
+    if (params.get("demo")==null) params.put("demo", "0");
+    if (params.get("css")==null) params.put("css", "");
+    if (params.get("title")==null) params.put("title", "");
+    if (params.get("classification")==null) params.put("classification", "");
+}
+
+if (!dm.equals("")) {
+
+    sqlstr = "SELECT * FROM clientServices INNER JOIN services ON aSrvcUnique=aServiceUnique WHERE clientServices.aDomain='" + dm + "'"
+              + " AND clientServices.aSubPage='" + subpage + "' AND services.aActive='1' ORDER by clientServices.aIndex,clientServices.aTitle";
+    rs = DBHStatic.getRs(con, sqlstr);
+    while (rs.next()) {
+        props = new String[9];
+        props[0] = rs.getString("aUnique");
+        props[1] = rs.getString("aSrvcUnique");
+        props[2] = rs.getString("aTitle");
+        props[3] = rs.getString("aIndex");
+        props[4] = rs.getString("aStatus");
+        props[5] = rs.getString("aName");
+        props[6] = rs.getString("aBackground");
+        props[7] = rs.getString("aFont");
+        props[8] = rs.getString("aDefParameters");
+        list.add(props);
+    }
+    rs.close();
+}
+
+
+
+for (int i=0; i<scats.length; i++) {
+    if (scats[i][0].equals("") || scats[i][1].equals("")) continue;
+
+    slist = new ArrayList();
+    sqlstr = "SELECT * FROM services WHERE aActive='1' AND aCategory='" + scats[i][1] + "' AND aSecLevel='0' ORDER BY aName";
+    System.out.println(sqlstr);
+    rs = DBHStatic.getRs(con, sqlstr);
+    while (rs.next()) {
+        props = new String[2];
+        props[0] = rs.getString("aServiceUnique");
+        props[1] = rs.getString("aName");
+        slist.add(props);
+    }
+    rs.close();
+    modules.add(scats[i][0]);
+    modules.add(slist);
+}
+
+
+
+if (!foundDomain) {
+    ck = new Cookie("_MXMDOMAINUNIQUE", "");
+    ck.setMaxAge(-1);
+    ck.setPath("/");
+    response.addCookie(ck);
+    ck = new Cookie("_MXMSUBPAGEUNIQUE", "");
+    ck.setMaxAge(-1);
+    ck.setPath("/");
+    response.addCookie(ck);
+}
+
+%>

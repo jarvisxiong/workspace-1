@@ -1,0 +1,112 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeLanguagePropertyDao langpropdao=null;
+UmeTempCache umesdc=null;
+UmeServiceDao umeservicedao=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+umesdc=(UmeTempCache) ac.getBean("umesdc");
+umeservicedao=(UmeServiceDao) ac.getBean("umeservicedao");
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+String sid = aReq.get("sid");
+SdcService sdcs = umesdc.getServiceMap().get(sid);
+if (sdcs==null) return;
+
+UmeCategory sdccat = null;
+SdcPackage sdcpack = null;
+SdcPackage srvcpack = null;
+
+String statusMsg="";
+int _curitem = 0;
+
+String save = aReq.get("save");
+String sType = aReq.get("stype");
+
+if (!save.equals("")) {
+    
+    String name = aReq.get("aName");
+    if (name.equals("")) statusMsg = lp.get("namemissing");
+    else {
+        sdcs.setName(name);
+        sdcs.setActive(Integer.parseInt(aReq.get("aActive", "0")));
+        try { sdcs.setIndex(Integer.parseInt(aReq.get("aIndex", "0"))); } catch (NumberFormatException e) {}
+        sdcs.setServiceType(SdcService.ServiceType.valueOf(aReq.get("aSrvcType").toUpperCase()));
+
+        if (sdcs.getServiceType()==SdcService.ServiceType.ANYXSYSTEM) sdcs.setActive(1);
+
+        sdcs.setCategory(aReq.get("aCategory"));
+        
+        try { sdcs.setVisibility(Integer.parseInt((aReq.get("visib_p", "0") + aReq.get("visib_r", "0") + aReq.get("visib_a", "0")), 2)); }
+        catch (NumberFormatException e) {}
+
+        sdcs.setSecLevel(Integer.parseInt(aReq.get("aSecLevel", "0")));
+        sdcs.setDirectory(aReq.get("aDirectory"));
+        sdcs.setDefaultPage(aReq.get("aDefaultPage"));
+        sdcs.setServiceCode(aReq.get("aSrvcCode"));
+        sdcs.setDefParameters(aReq.get("aDefParams"));
+        sdcs.setDescription(aReq.get("aDescription"));
+        sdcs.setModified(new Date());
+
+        sdcs.getPackageList().clear();
+        Enumeration e = request.getParameterNames();
+        for (;e.hasMoreElements();) {
+            String elem = (String) e.nextElement();
+            if (elem.startsWith("pack_")) {
+                sdcpack = umesdc.getPackageMap().get(elem.substring(5));
+                if (sdcpack!=null) sdcs.getPackageList().add(sdcpack);
+            }
+        }
+        
+        if (umeservicedao.saveService(sdcs)==0) statusMsg = lp.get(1);
+        else statusMsg = lp.get("systemerror");
+        
+        umeservicedao.initializeServices();
+
+    }
+	
+}
+
+String vP = "";
+String vR = "";
+String vA = "";
+
+switch (sdcs.getVisibility()) {
+    case 0: break;
+    case 1: vA = "checked"; break;
+    case 2: vR = "checked"; break;
+    case 3: vA = "checked"; vR = "checked"; break;
+    case 4: vP = "checked"; break;
+    case 5: vP = "checked"; vA = "checked"; break;
+    case 6: vP = "checked"; vR = "checked"; break;
+    case 7: vP = "checked"; vR = "checked"; vA = "checked"; break;
+}
+
+
+String bgColor="#EEEEEE";
+int cs=2;
+%>

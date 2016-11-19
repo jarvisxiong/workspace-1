@@ -1,0 +1,123 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "items";
+//***************************************************************************************************
+String durl = System.getProperty(domain + "_url");
+String statusMsg = "";
+String flashid = "";
+String clip = "";
+
+String unique = aReq.get("unq");
+String itype = aReq.get("itype");
+String formSource = aReq.get("formsrc", "0");
+String sort = aReq.get("sort");
+String index = aReq.get("si","0");
+int sIndex = Integer.parseInt(index);
+String search = URLDecoder.decode(aReq.get("sss").trim());
+String clnt = aReq.get("clnt");
+
+ItemCategoryDao itemcategorydao=null;
+JavaGameDao javagamedao=null;
+VideoClipDao videoclipdao=null;
+BgImageDao bgimagedao=null;
+MastertoneDao mastertonedao=null;
+RingtoneDao ringtonedao=null;
+GifAnimDao gifanimdao=null;
+ClientDao clientdao=null;
+ContentProviderDao contentproviderdao=null; 
+
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+      
+          itemcategorydao=(ItemCategoryDao) ac.getBean("itemcategorydao");
+          javagamedao=(JavaGameDao)ac.getBean("javagamedao");
+          videoclipdao=(VideoClipDao)ac.getBean("videoclipdao");
+          bgimagedao=(BgImageDao)ac.getBean("bgimagesdao");
+          mastertonedao=(MastertoneDao)ac.getBean("mastertonedao");
+          ringtonedao=(RingtoneDao)ac.getBean("ringtonedao");
+          gifanimdao=(GifAnimDao)ac.getBean("gifanimdao");
+          clientdao=(ClientDao) ac.getBean("clientdao");
+          contentproviderdao=(ContentProviderDao)ac.getBean("contentproviderdao");
+	  
+     }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+
+ ItemCategory cat = itemcategorydao.getCategory(unique, itype);
+
+
+ContentItem item = null;
+
+ContentSet cs = new ContentSet();
+cs.setStatus(-1); // all
+cs.setOnlyReleased(false);
+cs.setItemsPerPage(12);
+cs.setPageIndex(sIndex);
+cs.setCategory(unique);
+cs.setNumberOfTopPages(2);
+cs.setSortString("index");
+cs.setSearchString(Misc.makeSqlSafe(search));
+cs.setTimeSpan(300);
+
+if (itype.equals("java")) {
+    javagamedao.populate(cs);
+}
+else if (itype.equals("video")) {
+    videoclipdao.populate(cs);
+}
+else if (itype.equals("bgimage")) {
+    bgimagedao.populate(cs);
+}
+else if (itype.equals("mastertone")) {
+    cs.setItemsPerPage(25);
+    cs.setItemType("1");
+    mastertonedao.populate(cs);
+}
+else if (itype.equals("ringtone")) {
+    cs.setItemsPerPage(25);
+    ringtonedao.populate(cs);
+}
+else if (itype.equals("gifanim")) {
+    cs.setItemsPerPage(15);
+    gifanimdao.populate(cs);
+}
+else if (itype.equals("truetone")) {
+    cs.setItemsPerPage(25);
+    cs.setItemType("4");
+    mastertonedao.populate(cs);
+}
+else if (itype.equals("funtone")) {
+    cs.setItemsPerPage(25);
+    cs.setItemType("5");
+    mastertonedao.populate(cs);
+}
+
+java.util.List<Object> list = cs.getList();
+
+java.util.List<ItemCategory> catlist = UmeTempCmsCache.itemCategoryMap.get(itype);
+
+int count = cs.getItemCount();
+int pageCount = cs.getPageCount();
+int maxCount = cs.getItemsPerPage();
+int curPage = (sIndex/maxCount)+1;
+
+java.util.List<Client> clients  = clientdao.getAllClients("name");
+
+java.util.List<ContentProvider> cps  = contentproviderdao.getAllContentProviders("name");
+
+%>

@@ -1,0 +1,33 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+AdminRequest aReq = new AdminRequest(request);
+String domain = aReq.getDomain();
+String anyxSrvc = aReq.getAnyxService();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+UmeLanguagePropertyDao langpropdao=null;
+
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+}
+catch(Exception e){ e.printStackTrace(); }
+
+String fileName = "index";
+LangProps lp = LangProps.getFromContext(anyxSrvc, fileName, lang, domain, application, true);
+//SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+String statusMsg = "";
+boolean wrongPw = false;
+boolean noCookies = false;
+int expired = 0;
+
+int cs=4;
+String bgColor="";
+String contenturl="http://web1.pareva.umelimited.com/static/AdminPanel";
+System.out.println("INDEX_1 is Called upon in  wapsiteadmin");
+%>

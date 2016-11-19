@@ -1,0 +1,283 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "modcontest";
+//***************************************************************************************************
+
+String imageDir = System.getProperty("document_root") + "/images/javagames/promos/";
+String imgFormat = "gif";
+
+String srvc = aReq.get("srvc");
+String save = aReq.get("save");
+String updpic = Misc.hex8Decode(aReq.get("updpic"));
+String pic = aReq.get("pic");
+
+String dm = Misc.getCookie("_MXMDOMAINUNIQUE", request);
+String subpage = Misc.getCookie("_MXMSUBPAGEUNIQUE", request);
+
+if (dm.equals("") || srvc.equals("")) { out.println("domain / service missing"); return; }
+
+
+String sqlstr = "";
+String statusMsg ="";
+String statusMsg2 = "";
+String[] props = null;
+String[] pprops = null;
+String[] gprops = null;
+String[] dprops = null;
+
+String promoUnique = "";
+boolean resample = false;
+String srvcTitle = "";
+String domainName = "";
+Query query=null;
+Hashtable hh = new Hashtable();
+sqlstr = "SELECT * FROM xhtmlProfiles";
+Transaction trans=dbsession.beginTransaction();
+query=dbsession.createSQLQuery(sqlstr).addScalar("aProfile").addScalar("aFullWidth");
+java.util.List result=query.list();
+for(Object o:result) {
+    Object[] row=(Object[]) o;
+    hh.put(String.valueOf(row[0]), String.valueOf(row[1]));
+}
+
+Enumeration e = request.getParameterNames();
+for (;e.hasMoreElements();) {
+    String elem = (String) e.nextElement();
+    if (elem.startsWith("res_")) {
+        resample = true;
+        promoUnique = elem.substring(4);
+        break;
+    }
+    else if (elem.startsWith("res2_")) {
+        resample = true;
+        promoUnique = elem.substring(5) + "_prm";
+        break;
+    }
+}    
+
+if (resample) {
+     
+    String src = aReq.get("resrc_" + promoUnique);             
+    System.out.println(src);
+    String newimg = "";
+    BufferedImage orgImg = null;
+    BufferedImage srcimg = ImageIO.read(new File(imageDir + src));
+    
+    sqlstr = "SELECT * FROM dchocPromoImages WHERE aPromoUnique='" + promoUnique + "'";
+    //Transaction trans=dbsession.beginTransaction();
+    query=dbsession.createSQLQuery(sqlstr).addScalar("aImage");   
+    java.util.List result1=query.list();
+    for(Object o1:result1) {
+        Object[] row1=(Object[]) o1;
+        File oldimg = new File(imageDir + String.valueOf(row1[0]));
+        if (oldimg.exists()) oldimg.delete();
+    }
+    
+    
+    for (int i=4; i>0; i--) {
+        newimg = Misc.generateUniqueId() + "." + imgFormat;
+        ImageResize.resample(srcimg, imageDir + newimg, Integer.parseInt((String) hh.get("" + i)), -1);    
+        System.out.println(i + ": " + new File(imageDir + newimg));
+        orgImg = ImageIO.read(new File(imageDir + newimg));
+        int iw = orgImg.getWidth(null);
+        int ih = orgImg.getHeight(null);
+
+        sqlstr = "UPDATE dchocPromoImages SET aImage='" + newimg + "', aWidth='" + iw + "',aHeight='" + ih + "' WHERE aPromoUnique='" + promoUnique + "' AND aProfile='" + i + "'";
+        System.out.println(sqlstr);
+        query=dbsession.createSQLQuery(sqlstr);
+        int stat=query.executeUpdate();
+    }
+    
+}
+else if (!updpic.equals("")) { 
+    
+    sqlstr = "SELECT * FROM dchocPromoImages WHERE aUnique='" + pic + "'";
+    query=dbsession.createSQLQuery(sqlstr).addScalar("aImage");
+    java.util.List result2=query.list();
+    if(result2.size()>0){
+    for(Object o2:result2) {      
+        Object[] row2=(Object[]) o2;
+        File oldimg = new File(imageDir + String.valueOf(row2[0]));
+        if (oldimg.exists()) oldimg.delete();
+    }
+       }
+  
+        
+    BufferedImage orgImg = ImageIO.read(new File(imageDir + "source/" + updpic));
+    int iw = orgImg.getWidth(null);
+    int ih = orgImg.getHeight(null);
+    
+    String newimg = Misc.generateUniqueId() + "." + imgFormat;
+    
+    if (updpic.toLowerCase().endsWith("." + imgFormat)) { FileUtil.copyFile(imageDir + "source/" + updpic, imageDir + newimg); }
+    //else if (updpic.toLowerCase().endsWith(".jpg")) { newimg += ".jpg"; FileUtil.copyFile(imageDir + "source/" + updpic, imageDir + newimg); }
+    else {
+        System.out.println("Resampling from original.");        
+        ImageResize.resample(orgImg, imageDir + newimg, iw, ih);
+    }       
+    
+    sqlstr = "UPDATE dchocPromoImages SET aImage='" + newimg + "', aWidth='" + iw + "', aHeight='" + ih + "' WHERE aUnique='" + pic + "'";
+    System.out.println(sqlstr);
+    query=dbsession.createSQLQuery(sqlstr);
+    int stat=query.executeUpdate();
+}
+else if (!save.equals("")) { 
+   
+   String title = Misc.encodeForDb(aReq.get("title").trim());
+   String body = Misc.encodeForDb(aReq.get("body").trim());
+   String body2 = Misc.encodeForDb(aReq.get("body2").trim());
+   String game = aReq.get("game");
+   String opt1 = Misc.encodeForDb(aReq.get("opt1").trim());
+   String opt2 = Misc.encodeForDb(aReq.get("opt2").trim());
+   String opt3 = Misc.encodeForDb(aReq.get("opt3").trim());
+   String opt4 = Misc.encodeForDb(aReq.get("opt4").trim());
+   String ftext = aReq.get("ftext", "0");
+   String link = aReq.get("link", "0");
+   String coid = Misc.encodeForDb(aReq.get("coid").trim());
+   
+   sqlstr = "UPDATE dchocContests SET aTitle='" + title + "',aBody='" + body + "',aJavaUnique='" + game + "'"
+            + ",aOption1='" + opt1 + "',aOption2='" + opt2 + "',aOption3='" + opt3 + "',aOption4='" + opt4 + "'"
+            + ",aFreeText='" + ftext + "',aLink='" + link + "',aContestId='" + coid + "',aBody2='" + body2 + "'"
+            + " WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+   System.out.println(sqlstr);
+   query=dbsession.createSQLQuery(sqlstr);
+   int stat=query.executeUpdate();
+        
+}
+
+java.util.List games = new ArrayList();
+sqlstr = "SELECT * FROM javaGames INNER JOIN javaGamesStatus ON javaGames.aUnique=javaGamesStatus.aJavaUnique"
+        + " WHERE aGameStatus>'0' AND aDomain='" + dm + "' ORDER BY aTitle";
+query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("atitle");
+java.util.List result3=query.list();
+for(Object o3:result3) {
+    gprops = new String[2];
+    Object[] row3=(Object[]) o3;
+    gprops[0] = String.valueOf(row3[0]);
+    gprops[1] = String.valueOf(row3[1]);
+    games.add(gprops);
+}
+
+
+java.util.List dms = new ArrayList();
+sqlstr = "SELECT * FROM domains WHERE aDomainUnique!='fjq32V44EqwaKUb' AND aActive='1'";
+query=dbsession.createSQLQuery(sqlstr).addScalar("aDomainUnique").addScalar("aName");
+java.util.List result4=query.list();
+for(Object o4:result4) {
+    Object[] row4=(Object[]) o4;
+    if (String.valueOf(row4[0]).equals(dm)) { domainName = String.valueOf(row4[1]); break; }
+}
+
+Hashtable pics = new Hashtable();
+
+if (!dm.equals("") && !srvc.equals("")) {
+      
+    props = new String[12];
+    for (int k=0; k<props.length; k++) props[k] = "";
+
+    sqlstr = "SELECT * FROM dchocContests WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "'";
+    System.out.println(sqlstr);
+    query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aTitle").addScalar("aBody").addScalar("aOption1")
+            .addScalar("aOption2").addScalar("aOption3").addScalar("aJavaUnique").addScalar("aFreeText").addScalar("aLink")
+            .addScalar("aContestId").addScalar("aBody2");
+    java.util.List result5=query.list();
+    if (result5.size()>0) {
+        for(Object o5:result5){
+            Object[] row5=(Object[]) o5;
+        props[0] = String.valueOf(row5[0]);
+        props[1] = String.valueOf(row5[1]);
+        props[2] = new String(row5[2].toString().getBytes(), "iso-8859-1");
+        props[3] = String.valueOf(row5[3]);     
+        props[4] = String.valueOf(row5[4]);  
+        props[5] = String.valueOf(row5[5]);  
+        props[6] = String.valueOf(row5[6]);
+        props[7] = String.valueOf(row5[7]);
+        props[8] = String.valueOf(row5[8]);
+        props[9] = String.valueOf(row5[9]);
+        props[10] = String.valueOf(row5[10]);
+        props[11] = new String(row5[11].toString().getBytes(), "iso-8859-1");
+    }
+       }
+    else {
+        props[0] = Misc.generateUniqueId();
+        sqlstr = "INSERT INTO dchocContests VALUES('" + props[0] + "','" + srvc + "','" + dm + "','','','','','','','','0','0','','')";  
+        System.out.println(sqlstr);
+        query=dbsession.createSQLQuery(sqlstr);
+        int stat=query.executeUpdate();
+    }
+  
+
+    for (int g=1; g<5; g++) {
+        pprops = new String[4];
+        for (int k=0; k<pprops.length; k++) pprops[k] = "";
+
+        sqlstr = "SELECT * FROM dchocPromoImages WHERE aPromoUnique='" + props[0] + "' AND aProfile='" + g + "'";
+        query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aImage").addScalar("aWidth").addScalar("aHeight");
+        java.util.List result6=query.list();
+        if (result6.size()>0) {
+             for(Object o6:result6) {  
+                 Object[] row6=(Object[]) o6;
+            pprops[0] = String.valueOf(row6[0]);
+            pprops[1] = String.valueOf(row6[1]);
+            pprops[2] = String.valueOf(row6[2]);
+            pprops[3] = String.valueOf(row6[3]);
+                       }
+        }
+        else {
+            pprops[0] = Misc.generateUniqueId();
+            sqlstr = "INSERT INTO dchocPromoImages VALUES('" + pprops[0] + "','" + props[0] + "','" + g + "','','','')";
+            System.out.println(sqlstr);
+            query=dbsession.createSQLQuery(sqlstr);
+            int stat=query.executeUpdate();
+        } 
+        
+        pics.put(props[0] + "_" + g, pprops);
+    }
+    
+    for (int g=1; g<5; g++) {
+        pprops = new String[4];
+        for (int k=0; k<pprops.length; k++) pprops[k] = "";
+
+        sqlstr = "SELECT * FROM dchocPromoImages WHERE aPromoUnique='" + props[0] + "_prm' AND aProfile='" + g + "'";
+        System.out.println(sqlstr);
+        query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aImage").addScalar("aWidth").addScalar("aHeight");
+        java.util.List result7=query.list();
+        if (result7.size()>0) {
+            for(Object o7:result7){
+                Object[] row7=(Object[]) o7;
+            pprops[0] = String.valueOf(row7[0]);
+            pprops[1] = String.valueOf(row7[1]);
+            pprops[2] = String.valueOf(row7[2]);
+            pprops[3] = String.valueOf(row7[3]);
+             }
+                       }
+        else {
+            pprops[0] = Misc.generateUniqueId();
+            sqlstr = "INSERT INTO dchocPromoImages VALUES('" + pprops[0] + "','" + props[0] + "_prm','" + g + "','','','')";
+            System.out.println(sqlstr);
+            query=dbsession.createSQLQuery(sqlstr);
+            int stat=query.executeUpdate();
+        } 
+        
+        pics.put(props[0] + "_prm_" + g, pprops);
+    }
+
+    
+}
+
+trans.commit();
+dbsession.close();
+%>

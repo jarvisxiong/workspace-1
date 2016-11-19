@@ -1,0 +1,88 @@
+# GENERAL LANGUAGE FILE FOR ENGLISH
+
+welcome=Willkommen
+credits=Guthaben:
+credits2=Guthaben
+order=Spiel
+try=Ausprobieren
+more=Mehr
+moregames=Mehr Spiele
+next=Als Nächstes
+previous=Zurück
+back=Zurück
+start=Anfang
+main=Hauptseite
+home=Startseite
+no_orders=You must first download and test some games to be able to rate them.
+save=Speichern
+morepics=Mehr Bilder
+submit=Absenden
+up=Aufwärts
+null=Hauptseite
+morevideos=Mehr Videos
+search=Suche
+
+game=Spiele
+tone=Klingelton
+pic=Bild
+listen=Anhören
+
+not_supp_title=Telefon nicht unterstützt
+not_supp=Telefon nicht unterstützt
+
+bookmark=Lesezeichen
+bookmark_ok=Lesezeichen gesendet
+bookmark_failed=Lesezeichen Fehler
+
+error=Fehler
+not_found=Artikel nicht gefunden.
+authnerror=Authentisierung fehlgeschlagen.
+
+terms=Bedingungen und Konditionen
+
+moretones=Mehr Klingeltöne
+morepics=Mehr Bilder
+moreanims=Mehr Animationen
+
+java_games=Java-Spiele
+javagames=Java-Spiele
+polytones=Poly-Klingeltöne
+tones=Klingeltöne
+adult=Für Erwachsene
+real_tones=Real-Klingeltöne
+mastertones=Master-Klingeltöne
+realtones=Real Musik
+truetones=True-Klingeltöne
+funtruetones=Witzige & True-Klingeltöne
+images=Bilder
+videos=Videos
+themes=Designs
+anims=Animationen
+texts=Texte
+specials=Promotionen
+
+download=Download
+subscribe=Abonnieren
+buymore=Mehr Guthaben kaufen
+
+authnerror_1=
+authnerror_2=
+authnerror_3=Your subscription has ended.
+authnerror_4=
+authnerror_5=You don't have enough credits for this item.
+authnerror_6=You have already downloaded an item today.
+
+enter=Enter!
+
+entercell=Geben Sie Ihre Handynummer ein:
+enter_msisdn=eben Sie Ihre Handynummer ein:
+info_costi=&euro;5
+privacy=Privacy term
+confirm=Eingeben
+cancel==Löschen
+unsubscribe=Brechen Sie ab
+unsubscribe_error=Beendigungsfehler
+enter_PIN=PIN eingeben
+deactive_service_message_Unsubscribeduser=deactive Dienst (Bitte Identify)
+deactive_service_message_subscribeduser=deactive Dienst
+

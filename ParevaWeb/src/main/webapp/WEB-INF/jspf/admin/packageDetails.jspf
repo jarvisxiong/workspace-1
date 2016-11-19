@@ -1,0 +1,65 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeTempCache anyxsdc=null;
+UmeLanguagePropertyDao langpropdao=null;
+UmePackageDao sdcpackagedao=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+anyxsdc=(UmeTempCache) ac.getBean("umesdc");
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+sdcpackagedao=(UmePackageDao) ac.getBean("umepackage");
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+String pid = aReq.get("pid");
+SdcPackage item = anyxsdc.getPackageMap().get(pid);
+if (item==null) return;
+String dbName = System.getProperty("dbName");
+
+String statusMsg="";
+
+if (!aReq.get("save").equals("")) {
+
+
+    String name = aReq.get("aName");
+    if (name.equals("")) statusMsg = lp.get(5);
+    else {
+
+        item.setName(name);
+        item.setActive(Integer.parseInt(aReq.get("aActive", "0")));
+        item.setDescription(aReq.get("aDescription"));
+
+        sdcpackagedao.saveItem(item);
+
+        statusMsg = lp.get(1);
+
+        sdcpackagedao.initializePackages();
+    }
+}
+
+
+%>
+

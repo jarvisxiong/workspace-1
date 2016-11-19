@@ -1,0 +1,95 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+
+UmeTempCache umesdc=null;
+UmeLanguagePropertyDao langpropdao=null;
+UmeCategoryDao umecategorydao=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+umesdc=(UmeTempCache) ac.getBean("umesdc");
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+umecategorydao=(UmeCategoryDao) ac.getBean("umecategorydao");
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+String ctid = aReq.get("ctid");
+UmeCategory item = umesdc.getCategoryMap().get(ctid);
+if (item==null) return;
+
+UmeDomain sdcd = null;
+SdcLanguage sdclang = null;
+
+String statusMsg="";
+int _curitem = 0;
+
+String save = aReq.get("save");
+
+if (!save.equals("")) {
+
+    String name = aReq.get("name");
+    if (name.equals("")) statusMsg = lp.get(5);
+    else {
+
+        item.setName(name);
+        try { item.setIndex(Integer.parseInt(aReq.get("index", "0"))); } catch (NumberFormatException e) {}
+        item.setPicture(aReq.get("picture"));
+        item.setPage(aReq.get("page"));
+        try { item.setExpand(Integer.parseInt(aReq.get("expand", "0"))); } catch (NumberFormatException e) {}
+        try { item.setVisibility(Integer.parseInt(aReq.get("visibility", "1"))); } catch (NumberFormatException e) {}
+
+        item.setDomains("");
+
+        Enumeration e = request.getParameterNames();
+        for (;e.hasMoreElements();) {
+            String elem = (String) e.nextElement();
+            if (elem.startsWith("sdcd_")) {
+                if (!item.getDomains().equals("")) item.setDomains(item.getDomains() + "?");
+                item.setDomains(item.getDomains() + elem.substring(5));
+            }
+        }
+
+        item.getNameMap().clear();
+
+        e = request.getParameterNames();
+        for (;e.hasMoreElements();) {
+            String elem = (String) e.nextElement();
+            if (elem.startsWith("sdclang_")) {
+                item.getNameMap().put(elem.substring(8), aReq.get(elem));
+            }
+        }
+
+
+        umecategorydao.saveItem(item);
+
+        //UmeCategoryDao.initializeCategories();
+
+        statusMsg = lp.get(1);
+    }
+
+}
+
+
+%>

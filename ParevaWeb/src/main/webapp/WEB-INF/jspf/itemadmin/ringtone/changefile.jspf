@@ -1,0 +1,217 @@
+<%@page import="org.tritonus.share.sampled.file.TAudioFileFormat"%>
+<%@page import="javax.sound.sampled.AudioSystem"%>
+<%@page import="javax.sound.sampled.AudioFileFormat"%>
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "iso-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "changefile";
+
+//***************************************************************************************************
+
+String durl = System.getProperty(domain + "_url");
+
+String polySampleDir = System.getProperty("document_root") + "/images/poly76oierw87iy";
+String polyDataDir = System.getProperty("installDir") + "/data/midi";
+String lamecmd = "/usr/local/bin/lame";
+
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+
+File dir = new File(polySampleDir);
+if (!dir.exists()) dir.mkdirs();
+dir = new File(polyDataDir);
+if (!dir.exists()) dir.mkdirs();
+
+String statusMsg = "";
+String statusMsg2 = "";
+String sqlstr = "";
+String[] props = null;
+
+String contentType = request.getHeader("Content-Type");
+if (contentType==null) contentType="";
+
+String convsample = aReq.get("conv_sample");
+String bitr = aReq.get("bitrate", "56");
+String cmode = aReq.get("cmode", "j");
+String freq = aReq.get("freq", "44.1");
+int dur = Integer.parseInt(aReq.get("dur", "0").trim());
+
+String unique = aReq.get("unq");
+String cat = aReq.get("cat");
+String sIndex = aReq.get("si");
+String dFile = Misc.hex8Decode(aReq.get("dfile"));
+String sFile = Misc.hex8Decode(aReq.get("sfile"));
+
+if (contentType.startsWith("multipart/form-data")) {
+    
+    String boundary = "";
+    try { boundary = contentType.substring((contentType.indexOf("boundary=")+9)); } catch (IndexOutOfBoundsException e) {}
+    
+    int length = 0;
+    try { length = Integer.parseInt(request.getHeader("Content-Length")); } catch (NumberFormatException e) {}
+    
+    if (!boundary.equals("") && length>0) {
+        HashMap map = FileUtil.parseMultiPartFormData(length, boundary,
+                new BufferedLineReader(new InputStreamReader(request.getInputStream(), "iso-8859-1"), 1024));
+        
+        String[] dData = (String[]) map.get("ddata");
+        String[] sData = (String[]) map.get("sdata");
+        
+        unique = (String) map.get("unq");
+        cat = (String) map.get("cat");
+        sIndex = (String) map.get("si");
+        dFile = Misc.hex8Decode((String) map.get("dfile"));
+        sFile = Misc.hex8Decode((String) map.get("sfile"));
+        
+        if (dData!=null) {
+            dData[2] = dData[2].toLowerCase();
+            System.out.println(dData[0].length() + " : " + dData[2]);
+            if (dData[0].equals("") || dData[2].equals("")) { statusMsg = "Midi file not updated."; } else if (!dData[2].endsWith(".mid") && !dData[2].endsWith(".midi")) {
+                statusMsg = "Incorrect MIDI file format.";
+            }
+            
+            if (statusMsg.equals("")) {
+                File f = new File(polyDataDir + "/" + dFile);
+                f.delete();
+                while (true) {
+                    dFile = Misc.generateUniqueId() + dData[2].substring(dData[2].lastIndexOf("."));
+                    f = new File(polyDataDir + "/" + dFile);
+                    if (!f.exists()) {
+                        FileUtil.writeRawToFile(polyDataDir + "/" + dFile, dData[0], false);
+                        sqlstr = "UPDATE allTones set aMidiFile='" + dFile + "'"
+                                + " WHERE aUnique='" + unique + "'";
+                         query=dbsession.createSQLQuery(sqlstr);
+                         query.executeUpdate();
+                        break;
+                    }
+                }
+                statusMsg = "<span class='green_12'><b>Midi file updated.</b></span>";
+            }
+        } else { statusMsg = "System error2 (midi file)."; }
+        
+        if (sData!=null) {
+            sData[2] = sData[2].toLowerCase();
+            if (sData[0].equals("") || sData[2].equals("")) { statusMsg2 = "Sample file not updated."; } 
+            else if (!sData[2].endsWith(".mp3")) { statusMsg2 = "Incorrect sample file format."; }
+            
+            if (statusMsg2.equals("")) {
+                File f = new File(polySampleDir + "/" + sFile);
+                f.delete();
+                while (true) {
+                    sFile = Misc.generateUniqueId() + sData[2].substring(sData[2].lastIndexOf("."));
+                    f = new File(polySampleDir + "/" + sFile);
+                    if (!f.exists()) {
+                        FileUtil.writeRawToFile(polySampleDir + "/" + sFile, sData[0], false);
+                        sqlstr = "UPDATE allTones set aSampleFile='" + sFile + "'"
+                                + " WHERE aUnique='" + unique + "'";
+                        query=dbsession.createSQLQuery(sqlstr);
+                         query.executeUpdate();
+                        break;
+                    }
+                }
+                statusMsg2 = "<span class='green_12'><b>Sample file updated.</b></span>";
+            }
+        } else { statusMsg2 = "System error (sample file)."; }
+        
+    }
+}
+else if (!convsample.equals("")) {
+
+    try {
+
+        String filedir = polySampleDir;
+        String fName = sFile;
+        String destFile = Misc.generateUniqueId() + ".mp3";
+        
+        String resample = "22.05";
+        if (bitr.equals("16") || bitr.equals("24") || bitr.equals("32")) resample = "22.05";
+        else resample = "44.1";            
+        String srcFile = filedir + "/" + fName;
+        String[] cmd = new String[9];
+        cmd[0] = lamecmd;
+        cmd[1] = "-m";
+        cmd[2] = cmode;
+        cmd[3] = "--resample";
+        cmd[4] = resample;
+        cmd[5] = "-b";
+        cmd[6] = bitr;
+        cmd[7] = srcFile;
+        cmd[8] = filedir + "/" + destFile;          
+        
+        if (Misc.execute(cmd)) {
+            File srcf = new File(filedir + "/" + fName);
+            srcf.delete();
+            sqlstr = "UPDATE allTones set aSampleFile='" + destFile + "' WHERE aUnique='" + unique + "'";
+            query=dbsession.createSQLQuery(sqlstr);
+            query.executeUpdate();
+        }
+
+   } catch (Exception e) { System.out.println(e); }
+
+}
+RingtoneDao ringtonedao=null;
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+      
+          ringtonedao=(RingtoneDao)ac.getBean("ringtonedao");
+ }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+Ringtone item = ringtonedao.getItem(unique);
+
+sqlstr = "SELECT * FROM allTones WHERE aUnique='" + unique + "'";
+System.out.println(sqlstr);
+query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aSampleFile").addScalar("aMidiFile");
+java.util.List result=query.list();
+
+if (result.size()>0) {
+    for(Object o:result){
+        Object[] row=(Object[]) o;
+    props = new String[3];
+    props[0] = String.valueOf(row[0]);
+    props[1] = String.valueOf(row[1]);
+    props[2] =String.valueOf(row[2]);
+    }
+}
+
+
+Map sampleProps = null;
+boolean sampleExists = false;
+File samp = new File(polySampleDir + "/" + props[1]);
+System.out.println("Sample: " + samp);
+if (samp!=null && samp.exists() && !samp.isDirectory()) {
+    sampleExists = true;
+    AudioFileFormat baseFileFormat = AudioSystem.getAudioFileFormat(samp);           
+    if (baseFileFormat instanceof TAudioFileFormat)
+        sampleProps = ((TAudioFileFormat) baseFileFormat).properties();
+}
+
+
+dFile = props[2];
+sFile = props[1];
+System.out.println(sFile);
+System.out.println(dFile);
+
+trans.commit();
+dbsession.close();
+
+String flashid = Misc.generateUniqueId();
+
+int cs=4;
+String bgColor="";
+
+%>

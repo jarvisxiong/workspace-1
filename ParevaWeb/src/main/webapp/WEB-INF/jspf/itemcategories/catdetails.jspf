@@ -1,0 +1,65 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "catdetails";
+//***************************************************************************************************
+
+String statusMsg = "";
+
+String unique = aReq.get("unq");
+String itype = aReq.get("itype");
+String showSubs = aReq.get("shwsubs");
+String save = aReq.get("save");
+
+ItemCategoryDao itemcategorydao=null;
+
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+      
+          itemcategorydao=(ItemCategoryDao) ac.getBean("itemcategorydao");
+	  
+     }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+
+
+ItemCategory cat = itemcategorydao.getCategory(unique, itype);
+
+ItemCategory parent = null;
+if (!cat.getParentUnique().equals("root")) parent = itemcategorydao.getCategory(cat.getParentUnique(), itype);
+
+if (!save.equals("")) {
+        
+    cat.setName1(aReq.get("name1").toUpperCase());
+    cat.setName2(aReq.get("name2").toUpperCase());
+    cat.setName3(aReq.get("name3").toUpperCase());
+    cat.setName4(aReq.get("name4").toUpperCase());
+    cat.setClassification(aReq.get("class").toLowerCase());
+    
+    
+    int stat = itemcategorydao.saveCategory(cat);
+    
+    if (stat==1) statusMsg = "Category saved";
+    else statusMsg = "System error";
+    
+    cat = itemcategorydao.getCategory(unique, itype);
+           
+}
+
+
+
+%>

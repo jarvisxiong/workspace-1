@@ -1,0 +1,55 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String adminGroup = aReq.getAdminGroup();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "iso-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "alltonecheck";
+//****************************************************************************************************
+
+String statusMsg = "";
+
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+
+String sqlstr = "SELECT * FROM allTones";
+
+File f = null;
+File f2 = null;
+
+query=dbsession.createSQLQuery(sqlstr).addScalar("aSampleFile").addScalar("aMonoSample");
+java.util.List result=query.list();
+for(Object o:result) {
+    Object[] row=(Object[]) o;
+    String sample = String.valueOf(row[0]);
+    String mono = String.valueOf(row[1]);
+    if (sample.indexOf(".")>-1) sample = sample.substring(0,sample.lastIndexOf("."));
+    if (mono.indexOf(".")>-1) mono = mono.substring(0,mono.lastIndexOf("."));
+
+    f = new File("/var/mixem/anyx/www/images/mono23jhdfierw/" + mono + ".mp3");
+
+    System.out.println(f.exists() + ": " + f);
+    f2 = new File("/var/mixem/anyx/www/images/poly76oierw87iy/" + sample + ".mp3");
+
+    if (f2.exists() && f.exists()) {
+        //f.renameTo(new File("/var/mixem/anyx/www/images/mono23jhdfierw/" + sample + ".mp3"));
+    }
+
+    //if (!f.exists()) System.out.println(f.exists() + ": " + f);
+}
+trans.commit();
+dbsession.close();
+
+%>
+

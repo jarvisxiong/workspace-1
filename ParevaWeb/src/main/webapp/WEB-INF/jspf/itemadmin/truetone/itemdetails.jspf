@@ -1,0 +1,93 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String adminGroup = aReq.getAdminGroup();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "/itemadmin/truetone/itemdetails";
+//***************************************************************************************************
+
+String preDir = System.getProperty("document_root") + "/images/true4ih86tr54e";
+String dataDir = System.getProperty("installDir") + "/data/truetones";
+
+String statusMsg = "";
+String statusMsg2 = "";
+String wapSampleOk = "<span class='red_10'><b>Missing</b></span>";
+String webSampleOk = "<span class='red_10'><b>Missing</b></span>";
+
+String unique = aReq.get("unq");
+String save = aReq.get("save");
+String delete = aReq.get("del");
+String add = aReq.get("add");
+String own = aReq.get("own");
+String renew = aReq.get("renew");
+    
+String clnt = aReq.get("clnt");
+String ss = aReq.get("sort");
+
+TruetoneDao truetonedao=null;
+ItemCategoryDao itemcategorydao=null;
+ContentProviderDao contentproviderdao=null;
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+      
+          truetonedao=(TruetoneDao)ac.getBean("truetonedao");
+          itemcategorydao=(ItemCategoryDao) ac.getBean("itemcategorydao");
+          contentproviderdao=(ContentProviderDao)ac.getBean("contentproviderdao");
+ }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+
+Truetone item = truetonedao.getItem(unique);
+java.util.List<ItemCategory> cats =itemcategorydao.getCategories("truetone", "");
+java.util.List<ContentProvider> cps = contentproviderdao.getAllContentProviders("name");
+
+if (!save.equals("")) {
+    
+    String catStr = "";
+    String[] catArray = request.getParameterValues("catg");
+    if (catArray!=null) {
+        for (int i=0; i<catArray.length; i++) {
+            if (!catStr.equals("")) catStr += "?";
+            catStr += catArray[i];
+        }
+    }
+    
+    item.setName1(aReq.get("name1"));
+    item.setName2(aReq.get("name2"));
+    item.setName3(aReq.get("name3"));
+    item.setName4(aReq.get("name4"));
+    item.setSongName(aReq.get("songname"));
+    item.setArtist(aReq.get("artist"));
+    item.setPriceGroup(Integer.parseInt(aReq.get("prcg","0")));
+    item.setStatus(Integer.parseInt(aReq.get("publ","0")));
+    item.setToneType(aReq.get("tonetype","1"));
+    item.setCategory(catStr);
+    item.setTeostoStatus(Integer.parseInt(aReq.get("teosto","0")));
+    item.setTeostoTitle(aReq.get("tsongname"));
+    item.setTeostoArtist(aReq.get("tartist"));
+    item.setTeostoComposer(aReq.get("tcomposer"));
+    truetonedao.saveItem(item);
+}
+
+
+
+File f = new File(preDir + "/" + item.getPreviewFile() + ".mp3");
+System.out.println(f.getAbsolutePath());
+if (f.exists() && !f.isDirectory()) webSampleOk = "<span class='green_10'><b>OK</b></span>";
+f = new File(dataDir + "/" + item.getSampleFile());
+if (f.exists() && !f.isDirectory()) wapSampleOk = "<span class='green_10'><b>OK</b></span>";
+
+%>

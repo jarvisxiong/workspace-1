@@ -1,0 +1,108 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "xhtml";
+//***************************************************************************************************
+
+String sqlstr = "";
+String statusMsg ="";
+String[] props = null;
+String wapCat = "AAB1151391710156";
+
+java.util.List list = new ArrayList();
+
+String save = aReq.get("save");
+
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+
+if (!save.equals("")) {
+    
+    String unq = "";
+    String scs1 = "";
+    String scs2 = "";
+    String full = "";
+    String shot = "";
+    
+    Enumeration e = request.getParameterNames();            
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("scs1_")) {
+            
+            unq = elem.substring(5);
+            scs1 = aReq.get(elem).trim();
+            scs2 = aReq.get("scs2_" + unq).trim();
+            full = aReq.get("full_" + unq).trim();
+            shot = aReq.get("shot_" + unq).trim();
+            
+            sqlstr = "UPDATE xhtmlProfiles SET aScreen1='" + scs1 + "',aScreen2='" + scs2 + "'"
+                    + ",aFullWidth='" + full + "',aScreenshot='" + shot +"'"
+                    + " WHERE aUnique='" + unq + "'";
+            query=dbsession.createSQLQuery(sqlstr);
+            int stat=query.executeUpdate();
+        }
+    }
+    AppServerParameters appserverparameter=null;
+    
+  try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+appserverparameter=(AppServerParameters) ac.getBean("appserverparameters");
+
+}
+catch(Exception ex){
+    ex.printStackTrace();
+}
+    
+   appserverparameter.reloadXhtmlProfiles();
+}
+    
+for (int i=1; i<5; i++) {  
+
+    props = new String[6];
+    for (int k=0; k<props.length; k++) props[k] = "";
+
+    sqlstr = "SELECT * FROM xhtmlProfiles WHERE aProfile='" + i + "'";
+    query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aProfile").addScalar("aScreen1")
+            .addScalar("aScreen2").addScalar("aFullWidth").addScalar("aScreenshot");
+    java.util.List result=query.list();
+    
+    
+    if (result.size()>0) { 
+      for(Object o:result)  {
+          Object [] row=(Object[]) o;
+        props[0] = String.valueOf(row[0]);
+        props[1] = String.valueOf(row[1]);
+        props[2] = String.valueOf(row[2]); 
+        props[3] = String.valueOf(row[3]); 
+        props[4] = String.valueOf(row[4]); 
+        props[5] = String.valueOf(row[5]);
+        list.add(props);
+               }
+    }
+    else {
+        props[0] = Misc.generateUniqueId();
+        props[1] = "" + i;
+        sqlstr = "INSERT INTO xhtmlProfiles VALUES('" + props[0] + "','" + props[1] + "','','','','')";
+        query=dbsession.createSQLQuery(sqlstr);
+        int stat=query.executeUpdate();
+    }
+     
+}
+
+trans.commit();
+dbsession.close();
+%>

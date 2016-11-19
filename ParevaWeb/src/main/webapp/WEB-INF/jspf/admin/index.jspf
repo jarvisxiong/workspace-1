@@ -1,0 +1,114 @@
+<%@page import="ume.pareva.core.UmeFilter"%>
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+
+ServerParam appserverparameters=null;
+UmeTempCache anyxsdc=null;
+UmeLanguagePropertyDao langpropdao=null;
+UmeFilter umefilter=null;
+InitCmsParameters cmsparameters=null;
+UmeDomainDao umedomaindao=null;
+UmeServiceDao umeservicedao=null;
+MobileClubCampaignDao campaigndao=null;
+MobileClubDao mobileclubdao=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+appserverparameters=(ServerParam) ac.getBean("appserverparameters");
+anyxsdc=(UmeTempCache) ac.getBean("umesdc");
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+umefilter=(UmeFilter) ac.getBean("umefilter");
+cmsparameters=(InitCmsParameters) ac.getBean("cmsparameters");
+umedomaindao=(UmeDomainDao) ac.getBean("umedomaindao");
+umeservicedao=(UmeServiceDao) ac.getBean("umeservicedao");
+campaigndao=(MobileClubCampaignDao) ac.getBean("mobileclubcampaigndao");
+mobileclubdao=(MobileClubDao) ac.getBean("mobileclubdao");
+
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+
+
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+String statusMsg="";
+SimpleDateFormat df = new SimpleDateFormat("dd/M/yyyy HH:mm:ss");
+DecimalFormat df1 = new DecimalFormat("##0.00");
+
+String appButton = aReq.get("appReload");
+String appGc = aReq.get("appgc");
+
+
+if (!appButton.equals("")) {
+
+    //if (appserverparameters.reloadParams()) {
+
+//       statusMsg += lp.get(9);
+//       anyxsdc.setCxt(request.getServletContext());
+//       anyxsdc.doServiceInit();
+        
+        umedomaindao.initializeDomains();
+            //umeservicedao.initializeServices();
+            campaigndao.initializeCampaigns();
+            mobileclubdao.initializeMobileClubs();
+           cmsparameters.doInit();
+//       anyxsdc.doSmsInit();
+//       //InitSms.doInit();
+//       
+//       //System.out.println("SMS ACCOUNTS: " + umesdc.);
+//       
+//       
+//       statusMsg += "<br>SDC parameters reloaded!";
+//       appserverparameters.setUAMaps();
+//       appserverparameters.setMobilePhoneMaps();
+//       umefilter = new UmeFilter();
+//       //HandsetDao.initHandsets();
+//       statusMsg += "<br>Handset maps reloaded!";
+      
+//    }
+//    else {  statusMsg += lp.get(10); }
+}
+else if (!appGc.equals("")) {
+    Runtime.getRuntime().gc();
+}
+
+String propsLoaded="";
+String paramsLoaded="";
+if (System.getProperty("props_loaded")!=null) propsLoaded=System.getProperty("props_loaded");
+if (System.getProperty("params_loaded")!=null) paramsLoaded=System.getProperty("params_loaded");
+
+Runtime rt = Runtime.getRuntime();
+
+long fMem = rt.freeMemory();
+long tMem = rt.totalMemory();
+long mMem = rt.totalMemory();
+
+long now = System.currentTimeMillis();
+       
+String bgColor="#EEEEEE";
+int reqid = 0;
+
+
+
+
+
+%>

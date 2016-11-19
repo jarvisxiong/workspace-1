@@ -1,0 +1,115 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String adminGroup = aReq.getAdminGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "itemdetails";
+//***************************************************************************************************
+
+SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+String durl = System.getProperty(domain + "_url");
+
+String statusMsg = "";
+String statusMsg2 = "";
+String baseDir = System.getProperty("document_root");
+
+String monoSampleDir = System.getProperty("document_root") + "/images/mono23jhdfierw";
+String polySampleDir = System.getProperty("document_root") + "/images/poly76oierw87iy";
+String polyDataDir = System.getProperty("installDir") + "/data/midi";
+
+String unique = aReq.get("unq");
+String save = aReq.get("save");
+String delete = aReq.get("del");
+String add = aReq.get("add");
+String own = aReq.get("own");
+String renew = aReq.get("renew");
+    
+String clnt = aReq.get("clnt");
+String ss = aReq.get("sort");
+
+RingtoneDao ringtonedao=null;
+ItemCategoryDao itemcategorydao=null;
+ContentProviderDao contentproviderdao=null;
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+      
+          ringtonedao=(RingtoneDao)ac.getBean("ringtonedao");
+          itemcategorydao=(ItemCategoryDao) ac.getBean("itemcategorydao");
+          contentproviderdao=(ContentProviderDao)ac.getBean("contentproviderdao");
+ }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+
+
+Ringtone item = ringtonedao.getItem(unique);
+java.util.List<ItemCategory> cats = itemcategorydao.getCategories("ringtone", "");
+java.util.List<ContentProvider> cps = contentproviderdao.getAllContentProviders("name");
+
+if (!save.equals("")) {
+    
+    String catStr = "";
+    String[] catArray = request.getParameterValues("catg");
+    if (catArray!=null) {
+        for (int i=0; i<catArray.length; i++) {
+            if (!catStr.equals("")) catStr += "?";
+            catStr += catArray[i];
+        }
+    }
+    
+    item.setName1(aReq.get("name1"));
+    item.setName2(aReq.get("name2"));
+    item.setName3(aReq.get("name3"));
+    item.setName4(aReq.get("name4"));
+    item.setSongName(aReq.get("songname"));
+    item.setArtist(aReq.get("artist"));
+    item.setPriceGroup(Integer.parseInt(aReq.get("prcg","0")));
+    item.setStatus(Integer.parseInt(aReq.get("publ","0")));
+    item.setToneType(aReq.get("teosto","0"));
+    item.setCategory(catStr);    
+    item.setTeostoTitle(aReq.get("tsongname"));
+    item.setTeostoArtist(aReq.get("tartist"));
+    item.setTeostoComposer(aReq.get("tcomposer"));
+    item.setRelease(sdf.parse(aReq.get("release")));
+    item.setExpire(sdf.parse(aReq.get("expire")));
+    ringtonedao.saveItem(item);
+    
+    UmeTempCmsCache.itemCategoryMap = itemcategorydao.getCategoryMap();
+}
+
+
+File f = null;
+
+String polyDataOk = "<span class='red_10'><b>Missing</b></span>";
+String polySampleOk = "<span class='red_10'><b>Missing</b></span>";
+String monoDataOk = "<span class='red_10'><b>Missing</b></span>";
+String monoSampleOk = "<span class='red_10'><b>Missing</b></span>";
+boolean pDataOk = false;
+boolean pSampleOk = false;
+boolean mDataOk = !item.getMonoSample().equals("");
+boolean mSampleOk = false;
+
+f = new File(polySampleDir + "/" + item.getSampleFile());
+if (f.exists() && !f.isDirectory()) pSampleOk = true;
+f = new File(polyDataDir + "/" + item.getMidiFile());
+if (f.exists() && !f.isDirectory()) pDataOk = true;
+f = new File(monoSampleDir + "/" + item.getMonoSample());
+if (f.exists() && !f.isDirectory()) mSampleOk = true;
+
+String flashid = Misc.generateUniqueId();
+
+%>
+

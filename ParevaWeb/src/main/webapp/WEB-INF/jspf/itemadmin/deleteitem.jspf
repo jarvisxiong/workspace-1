@@ -1,0 +1,89 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "iso-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "deleteitem";
+//***************************************************************************************************
+MastertoneDao mastertonedao=null;
+VideoClipDao videoclipdao=null;
+ClientDao clientdao=null;
+BgImageDao bgimagedao=null;
+JavaGameDao javagamedao=null;
+GifAnimDao gifanimdao=null;
+RingtoneDao ringtonedao=null;
+TruetoneDao truetonedao=null; 
+
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+      
+          clientdao=(ClientDao) ac.getBean("clientdao");
+	  videoclipdao=(VideoClipDao)ac.getBean("videoclipdao");
+	  bgimagedao=(BgImageDao)ac.getBean("bgimagesdao");
+	  javagamedao=(JavaGameDao)ac.getBean("javagamedao");
+	  gifanimdao=(GifAnimDao)ac.getBean("gifanimdao");
+	  ringtonedao=(RingtoneDao)ac.getBean("ringtonedao");
+	  truetonedao=(TruetoneDao)ac.getBean("truetonedao");
+	  mastertonedao=(MastertoneDao)ac.getBean("mastertonedao");
+     }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+
+String imageDir = System.getProperty("document_root");
+String itype = aReq.get("itype");
+String unique = aReq.get("unq");
+String status = "error";
+
+
+String sqlstr = "";
+
+if (!unique.equals("")) {
+
+    if (itype.equals("java")) {
+        JavaGame item = javagamedao.getItem(unique);
+        if (javagamedao.deleteItem(item)) status = "ok";
+    }
+    else if (itype.equals("video")) {
+        VideoClip item = videoclipdao.getItem(unique);
+        if (videoclipdao.deleteItem(item)) status = "ok";        
+    }
+    else if (itype.equals("bgimage")) {
+        BgImage item = bgimagedao.getItem(unique);
+        if (bgimagedao.deleteItem(item)) status = "ok";
+    }
+    else if (itype.equals("mastertone")) {
+        Mastertone item = mastertonedao.getItem(unique);
+        if (mastertonedao.deleteItem(item)) status = "ok";
+    }
+    else if (itype.equals("ringtone")) {
+        Ringtone item = ringtonedao.getItem(unique);
+        if (ringtonedao.deleteItem(item)) status = "ok";
+    }
+    else if (itype.equals("gifanim")) {
+        GifAnim item = gifanimdao.getItem(unique);
+        if (gifanimdao.deleteItem(item)) status = "ok";
+    }
+    else if (itype.equals("truetone")) {
+        Truetone item = truetonedao.getItem(unique);
+        if (truetonedao.deleteItem(item)) status = "ok";
+    }
+}
+
+try { application.getRequestDispatcher("/" + System.getProperty("dir_" + anyxSrvc) + "/index.jsp?del=" + status).forward(request,response); } 
+catch (NullPointerException e) {}
+return;         
+     
+%>

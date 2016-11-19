@@ -1,0 +1,229 @@
+<%@page import="org.tritonus.share.sampled.file.TAudioFileFormat"%>
+<%@page import="javax.sound.sampled.AudioSystem"%>
+<%@page import="javax.sound.sampled.AudioFileFormat"%>
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "iso-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "changemonofile";
+//***************************************************************************************************
+
+String durl = System.getProperty(domain + "_url");
+
+String monoSampleDir = System.getProperty("document_root") + "/images/mono23jhdfierw";
+String lamecmd = "/usr/local/bin/lame";
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+
+File dir = new File(monoSampleDir);
+if (!dir.exists()) dir.mkdirs();
+
+String anyxDb = System.getProperty("dbName");
+String statusMsg = "";
+String statusMsg2 = "";
+
+String sqlstr = "";
+String[] props = null;
+
+String contentType = request.getHeader("Content-Type");
+if (contentType==null) contentType="";
+
+String convsample = aReq.get("conv_sample");
+String bitr = aReq.get("bitrate", "56");
+String cmode = aReq.get("cmode", "j");
+String freq = aReq.get("freq", "44.1");
+int dur = Integer.parseInt(aReq.get("dur", "0").trim());
+
+String unique = aReq.get("unq");
+String cat = aReq.get("cat");
+String sIndex = aReq.get("si");
+String sFile = Misc.hex8Decode(aReq.get("sfile"));
+
+if (contentType.startsWith("multipart/form-data")) {
+    
+    String boundary = "";
+    try { boundary = contentType.substring((contentType.indexOf("boundary=")+9)); } catch (IndexOutOfBoundsException e) {}
+    
+    int length = 0;
+    try { length = Integer.parseInt(request.getHeader("Content-Length")); } catch (NumberFormatException e) {}
+    
+    if (!boundary.equals("") && length>0) {
+        HashMap map = FileUtil.parseMultiPartFormData(length, boundary,
+                new BufferedLineReader(new InputStreamReader(request.getInputStream(), "iso-8859-1"), 1024));
+        
+        String[] dData = (String[]) map.get("ddata");
+        String[] sData = (String[]) map.get("sdata");
+        String otaText = (String) map.get("otatext");
+        
+        unique = (String) map.get("unq");
+        cat = (String) map.get("cat");
+        sIndex = (String) map.get("si");
+        sFile = Misc.hex8Decode((String) map.get("sfile"));
+        
+        if (dData!=null) {
+            dData[2] = dData[2].toLowerCase();
+            
+            if (otaText.equals("") && (dData[0].equals("") || dData[2].equals(""))) { statusMsg = "OTA file not updated."; }
+            /*
+            else if (!dData[2].endsWith(".ota") && !dData[2].endsWith(".ott") && !dData[2].endsWith(".mid") && !dData[2].endsWith(".midi")) {
+                    statusMsg = "Incorrect file format.";
+            }
+             */
+            System.out.println("Ota File: " + dData[2]);
+            System.out.println("Ota Text: " + otaText);
+            
+            if (statusMsg.equals("")) {
+                
+                String otaHex = "";
+                OtaTone ota = new OtaTone();
+                if (!dData[2].equals("") && (dData[2].endsWith("ott") || dData[2].endsWith("ota") || dData[2].indexOf(".")==-1)) {
+                    System.out.println("Converting to HEX: " + Misc.hex8Code(dData[0]));
+                    otaHex = Misc.hex8Code(dData[0]);
+                    //otaHex = dData[0];
+                    ota.setHexOta(otaHex);
+                } else if (dData[2].endsWith("hex")) {
+                    otaHex = dData[0].trim();
+                    ota.setHexOta(otaHex);
+                } else if (!otaText.equals("")) {
+                    otaHex = otaText.trim();
+                    ota.setHexOta(otaHex);
+                } else if (dData[2].endsWith(".rtttl") || dData[2].endsWith(".rttl") || dData[2].endsWith(".rtx")) {
+                    ota.setRtttl(dData[0]);
+                    otaHex = ota.hexOtaStr;
+                } else if (dData[2].endsWith(".jrttl")) {
+                    ota.setJrttl(dData[0]);
+                    otaHex = ota.hexOtaStr;
+                } else if (dData[2].endsWith("mid")) {
+                    ota.setMidi(dData[0]);
+                    otaHex = ota.hexOtaStr;
+                }
+                
+                if (!otaHex.equals("")) {
+                    sqlstr = "UPDATE allTones SET aOtaData='" + otaHex + "'"
+                            + " WHERE aUnique='" + unique + "'";
+                    query=dbsession.createSQLQuery(sqlstr);
+                    query.executeUpdate();
+                    statusMsg = "<span class='green_12'><b>OTA file updated.</b></span>";
+                } else statusMsg = "Error parsing OTA data to hex.";
+            }
+        } else { statusMsg = "System error2 (midi file)."; }
+        
+        if (sData!=null) {
+            sData[2] = sData[2].toLowerCase();
+            if (sData[0].equals("") || sData[2].equals("")) { statusMsg2 = "Sample file not updated."; } else if (!sData[2].endsWith(".mp3")) {
+                statusMsg2 = "Incorrect sample file format.";
+            }
+            
+            if (statusMsg2.equals("")) {
+                File f = new File(monoSampleDir + "/" + sFile);
+                f.delete();
+                while (true) {
+                    sFile = Misc.generateUniqueId() + sData[2].substring(sData[2].lastIndexOf("."));
+                    f = new File(monoSampleDir + "/" + sFile);
+                    if (!f.exists()) {
+                        FileUtil.writeRawToFile(monoSampleDir + "/" + sFile, sData[0], false);
+                        sqlstr = "UPDATE allTones set aMonoSample='" + sFile + "'"
+                                + " WHERE aUnique='" + unique + "'";
+                        query=dbsession.createSQLQuery(sqlstr);
+                        query.executeUpdate();
+                        break;
+                    }
+                }
+                statusMsg2 = "<span class='green_12'><b>Sample file updated.</b></span>";
+            }
+        } else { statusMsg2 = "System error (sample file)."; }
+        
+    }
+}
+else if (!convsample.equals("")) {
+
+    try {
+
+        String filedir = monoSampleDir;
+        String fName = sFile;
+        String destFile = Misc.generateUniqueId() + ".mp3";
+        
+        String resample = "22.05";
+        if (bitr.equals("16") || bitr.equals("24") || bitr.equals("32")) resample = "22.05";
+        else resample = "44.1";            
+        String srcFile = filedir + "/" + fName;
+        String[] cmd = new String[9];
+        cmd[0] = lamecmd;
+        cmd[1] = "-m";
+        cmd[2] = cmode;
+        cmd[3] = "--resample";
+        cmd[4] = resample;
+        cmd[5] = "-b";
+        cmd[6] = bitr;
+        cmd[7] = srcFile;
+        cmd[8] = filedir + "/" + destFile;          
+
+        if (Misc.execute(cmd)) {
+            File srcf = new File(filedir + "/" + fName);
+            srcf.delete();
+            sqlstr = "UPDATE allTones set aMonoSample='" + destFile + "' WHERE aUnique='" + unique + "'";
+            query=dbsession.createSQLQuery(sqlstr);
+            query.executeUpdate();
+        }
+
+   } catch (Exception e) { System.out.println(e); }
+
+}
+
+RingtoneDao ringtonedao=null;
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+      
+          ringtonedao=(RingtoneDao)ac.getBean("ringtonedao");
+ }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+Ringtone item = ringtonedao.getItem(unique);
+
+sqlstr = "SELECT * FROM allTones WHERE aUnique='" + unique + "'";
+query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aMonoSample");
+java.util.List result=query.list();
+
+if (result.size()>0) {
+    for(Object o:result){
+        Object[] row=(Object[]) o;
+    props = new String[2];
+    props[0] =String.valueOf(row[0]);
+    props[1] = String.valueOf(row[1]);
+    }
+}
+
+Map sampleProps = null;
+boolean sampleExists = false;
+File samp = new File(monoSampleDir + "/" + props[1]);
+if (samp!=null && samp.exists() && !samp.isDirectory()) {
+    sampleExists = true;
+    AudioFileFormat baseFileFormat = AudioSystem.getAudioFileFormat(samp);           
+    if (baseFileFormat instanceof TAudioFileFormat)
+        sampleProps = ((TAudioFileFormat) baseFileFormat).properties();
+}
+
+sFile = props[1];
+System.out.println(sFile);
+
+trans.commit();
+dbsession.close();
+
+String flashid = Misc.generateUniqueId();
+
+int cs=4;
+String bgColor="";
+%>

@@ -1,0 +1,211 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser umeuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String lang = aReq.getLanguage().getLanguageCode();
+String regionid=aReq.get("regionid");
+
+String userGroupUnique=umeuser.getUserGroup();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeLanguagePropertyDao langpropdao=null;
+MobileClubDao mobileclubdao=null;
+UmeSmsKeywordDao umesmskeyworddao=null;
+UmeTempCache umesdc=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+mobileclubdao=(MobileClubDao) ac.getBean("mobileclubdao");
+umesmskeyworddao=(UmeSmsKeywordDao) ac.getBean("umesmskeyworddao");
+umesdc=(UmeTempCache) ac.getBean("umesdc");
+
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//*************************************************************************************************
+String statusMsg = "";
+String smsDeliveryReportService = "AAB1092648495686";
+
+String clubUniqueForDuplication=aReq.get("clubUniqueForDuplication");
+if(!clubUniqueForDuplication.equals("")){
+	mobileclubdao.duplicate(clubUniqueForDuplication);
+	
+}
+
+String add = aReq.get("add");
+
+if (!add.equals("")) {
+    String name = aReq.get("addName");
+
+    if (name.equals("")) { statusMsg = "Name-field is empty"; }
+    else {
+        MobileClub item = new MobileClub();
+        item.setName(name);
+        mobileclubdao.saveItem(item);
+
+        mobileclubdao.initializeMobileClubs();
+
+        SdcSmsKeyword kw = new SdcSmsKeyword();
+        kw.setServiceUnique(smsDeliveryReportService);
+        kw.setLanguageCode("en");
+        kw.setKeyword(item.getUnique());
+        umesmskeyworddao.addItem(kw);
+
+        umesmskeyworddao.initializeKeywords();
+    }
+}
+
+UmeDomain umedomain = null;
+MobileClub item = null;
+String sqlstr="";
+Query query=null;
+String selectedRegion=aReq.get("regionid");
+String userRegion="";
+
+java.util.List<MobileClub> list = new ArrayList();
+java.util.List regionlist = new ArrayList();
+
+Transaction trans=dbsession.beginTransaction();
+
+//if(selectedRegion.equals("")){
+if(regionlist==null || regionlist.size()<=0){
+	sqlstr="select aRegion from userGroups where aUserGroupUnique='"+userGroupUnique+"' order by aRegion";
+	query=dbsession.createSQLQuery(sqlstr).addScalar("aRegion");
+	java.util.List regionResult=query.list();
+	for(Object region:regionResult){
+		String regionrow=region.toString();
+		//regionlist.add(regionrow);
+		userRegion=regionrow;
+}
+}
+//}
+
+if(!userRegion.equals("")){
+	if(regionlist==null || regionlist.size()<=0){
+		sqlstr="select mc.aUnique as aUnique,mc.aName as aName, mc.aClubName as aClubName, mc.aOptIn as aOptIn, mc.aWapDomain as aWapDomain, mc.aActive as aActive"
+				+ " from mobileClubs mc where mc.aRegion = '"+userRegion+"' order by mc.aName";
+				
+  	query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aName").addScalar("aClubName").addScalar("aOptIn").addScalar("aWapDomain").addScalar("aActive");
+  	java.util.List clubList=query.list();
+  	for(Object clb:clubList)
+            {
+  		 Object[] clubrow=(Object[]) clb;
+         
+  		MobileClub mobileClub=new MobileClub();
+  		mobileClub.setUnique(String.valueOf(clubrow[0]));
+  		mobileClub.setName(String.valueOf(clubrow[1]));
+  		mobileClub.setClubName(String.valueOf(clubrow[2]));
+  		mobileClub.setOptIn(Integer.parseInt(String.valueOf(clubrow[3])));
+  		mobileClub.setWapDomain(String.valueOf(clubrow[4]));
+  		mobileClub.setActive(Integer.parseInt(String.valueOf(clubrow[5])));
+  		list.add(mobileClub);
+	}
+}
+	selectedRegion=userRegion;
+	regionlist.add(userRegion);	
+}
+
+if(userRegion.equals("")&& !selectedRegion.equals("")){
+
+if(regionlist==null || regionlist.size()<=0){
+		sqlstr="select distinct(aRegion) from mobileClubs where aRegion<>'' order by aRegion";
+		query=dbsession.createSQLQuery(sqlstr).addScalar("aRegion");
+		java.util.List regionresult=query.list();
+		for(Object regiono:regionresult){
+   		String regionrow=regiono.toString();
+   		regionlist.add(regionrow);
+   	}
+		//request.setAttribute("regionlist",regionlist);
+		System.out.println("Club Query: "+sqlstr+"   AND the size of regionlist is "+regionlist.size());
+ }
+
+sqlstr="select mc.aUnique as aUnique,mc.aName as aName, mc.aClubName as aClubName, mc.aOptIn as aOptIn, mc.aWapDomain as aWapDomain, mc.aActive as aActive"
+		+ " from mobileClubs mc where mc.aRegion = '"+selectedRegion+"' order by mc.aName";
+		
+query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aName").addScalar("aClubName").addScalar("aOptIn").addScalar("aWapDomain").addScalar("aActive");
+java.util.List clubList=query.list();
+for(Object clb:clubList)
+    {
+	 Object[] clubrow=(Object[]) clb;
+ 
+	MobileClub mobileClub=new MobileClub();
+	mobileClub.setUnique(String.valueOf(clubrow[0]));
+	mobileClub.setName(String.valueOf(clubrow[1]));
+	mobileClub.setClubName(String.valueOf(clubrow[2]));
+	mobileClub.setOptIn(Integer.parseInt(String.valueOf(clubrow[3])));
+	mobileClub.setWapDomain(String.valueOf(clubrow[4]));
+	mobileClub.setActive(Integer.parseInt(String.valueOf(clubrow[5])));
+	list.add(mobileClub);
+}
+
+
+
+}
+if(userRegion.equals("")&& selectedRegion.equals("")){
+	
+	if(regionlist==null || regionlist.size()<=0){
+		regionlist=mobileclubdao.getDistinctRegions();
+		Collections.sort(regionlist);
+   	}
+		//request.setAttribute("regionlist",regionlist);
+		System.out.println("Club Query: "+sqlstr+"   AND the size of regionlist is "+regionlist.size());
+ 
+	list = mobileclubdao.getMobileClubList();
+	
+}
+
+
+
+trans.commit();
+dbsession.close();
+	
+
+/*
+if(!regionid.equals("")){
+	
+	
+	sqlstr="select mc.aUnique as aUnique,mc.aName as aName, mc.aClubName as aClubName, mc.aOptIn as aOptIn, mc.aWapDomain as aWapDomain, mc.aActive as aActive"
+				+ " from mobileClubs mc where mc.aRegion = '"+regionid+"' order by mc.aName";
+				
+  	query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aName").addScalar("aClubName").addScalar("aOptIn").addScalar("aWapDomain").addScalar("aActive");
+  	java.util.List clubList=query.list();
+  	for(Object clb:clubList)
+            {
+  		 Object[] clubrow=(Object[]) clb;
+         
+  		MobileClub mobileClub=new MobileClub();
+  		mobileClub.setUnique(String.valueOf(clubrow[0]));
+  		mobileClub.setName(String.valueOf(clubrow[1]));
+  		mobileClub.setClubName(String.valueOf(clubrow[2]));
+  		mobileClub.setOptIn(Integer.parseInt(String.valueOf(clubrow[3])));
+  		mobileClub.setWapDomain(String.valueOf(clubrow[4]));
+  		mobileClub.setActive(Integer.parseInt(String.valueOf(clubrow[5])));
+  		
+  		list.add(mobileClub);
+     
+  }
+  
+	trans.commit();
+	dbsession.close();
+}else
+	list = mobileclubdao.getMobileClubList();
+*/
+%>

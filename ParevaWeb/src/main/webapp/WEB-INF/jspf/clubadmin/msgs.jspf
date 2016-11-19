@@ -1,0 +1,245 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+    SdcRequest aReq = new SdcRequest(request);
+    UmeUser umeuser = aReq.getUser();
+    UmeDomain dmn = aReq.getDomain();
+    SdcService service = aReq.getService();
+
+    String domain = dmn.getUnique();
+    String lang = aReq.getLanguage().getLanguageCode();
+
+    String stylesheet = aReq.getStylesheet();
+    String pageEnc = aReq.getEncoding();
+    response.setContentType("text/html; charset=" + pageEnc);
+
+    String fileName = request.getServletPath();
+    fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
+    fileName = fileName.substring(0, fileName.lastIndexOf("."));
+
+    UmeLanguagePropertyDao langpropdao = null;
+    MobileClubDao mobileclubdao = null;
+    UmeSmsKeywordDao umesmskeyworddao = null;
+    UmeTempCache umesdc = null;
+    UmeClubDetailsDao umeclubdetailsdao = null;
+    try {
+        ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+        ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request, servletContext);
+        langpropdao = (UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+        mobileclubdao = (MobileClubDao) ac.getBean("mobileclubdao");
+        umesmskeyworddao = (UmeSmsKeywordDao) ac.getBean("umesmskeyworddao");
+        umesdc = (UmeTempCache) ac.getBean("umesdc");
+        umeclubdetailsdao = (UmeClubDetailsDao) ac.getBean("umeclubdetailsdao");
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+
+    SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+    String sqlstr = "";
+    String followupMsg = "", followupMsgURL = "", welcomesms2 = "", teaser = "", freedays = "", frequency = "", billingmessage3 = "";
+    String unq = aReq.get("unq");
+
+    Map<String, UmeClubDetails> clubdetailsmap = null;
+
+    if (UmeTempCmsCache.umeClubDetailsMap != null) {
+        clubdetailsmap = UmeTempCmsCache.umeClubDetailsMap;
+    } else {
+        umeclubdetailsdao.initializeUmeClubDetails();
+        clubdetailsmap = UmeTempCmsCache.umeClubDetailsMap;
+    }
+
+    followupMsg = clubdetailsmap.get(unq).getFollowupsms().trim();
+    followupMsgURL = clubdetailsmap.get(unq).getFollowupUrl().trim();
+    welcomesms2 = clubdetailsmap.get(unq).getClubWelcomeSms2().trim();
+    teaser = clubdetailsmap.get(unq).getTeaser().trim();
+    billingmessage3 = clubdetailsmap.get(unq).getBillingmessage3().trim();
+//freedays=clubdetailsmap.get(unq).getFreeDay().trim();
+    java.util.List<String> messageTypes = new ArrayList<String>();
+    messageTypes.add("Billable");
+    messageTypes.add("Welcome");
+    messageTypes.add("Reminder");
+    messageTypes.add("Stop");
+    messageTypes.add("FollowUp");
+    messageTypes.add("Teaser");
+    messageTypes.add("SubscriptionBill");
+    java.util.List<UmeClubMessages> billableList = new ArrayList<UmeClubMessages>();
+    java.util.List<UmeClubMessages> welcomeList = new ArrayList<UmeClubMessages>();
+    java.util.List<UmeClubMessages> reminderList = new ArrayList<UmeClubMessages>();
+    java.util.List<UmeClubMessages> stopList = new ArrayList<UmeClubMessages>();
+    java.util.List<UmeClubMessages> followUpList = new ArrayList<UmeClubMessages>();
+    java.util.List<UmeClubMessages> teaserList = new ArrayList<UmeClubMessages>();
+    java.util.List<UmeClubMessages> billingdaemonList = new ArrayList<UmeClubMessages>();
+
+    /* billableList=umeclubdetailsdao.getUmeClubMessages(unq,"Billable");
+     welcomeList=umeclubdetailsdao.getUmeClubMessages(unq,"Welcome");
+     reminderList=umeclubdetailsdao.getUmeClubMessages(unq,"Reminder");
+     stopList=umeclubdetailsdao.getUmeClubMessages(unq,"Stop");
+     followUpList=umeclubdetailsdao.getUmeClubMessages(unq,"FollowUp");
+     teaserList=umeclubdetailsdao.getUmeClubMessages(unq,"Teaser"); */
+    System.out.println("MessageSave: " + aReq.get("saveClubMsg"));
+//System.out.println("FollowUP SMS "+followupMsg+" For Mobile Unique "+ unq);
+    MobileClub item = UmeTempCmsCache.mobileClubMap.get(unq);
+    UmeClubDetails clubdetails = null;
+    if (item == null) {
+        out.println("Could not find club item.");
+        return;
+    }
+
+    System.out.println("CLUB: " + item);
+
+    String statusMsg = "";
+    String msgType = aReq.get("msgType");
+    String save = aReq.get("save");
+    String saveClubMsg = aReq.get("saveClubMsg");
+    String delete = aReq.get("delete");
+    System.out.println("Save: " + save + " " + saveClubMsg);
+
+//String freeday=aReq.get("freeday");
+//String clubfrequency=aReq.get("frequency");
+    intitializeMessageLists(billableList, welcomeList, reminderList, stopList, followUpList, teaserList, billingdaemonList, umeclubdetailsdao, unq, msgType);
+
+    if (!saveClubMsg.equals("")) {
+        
+        for (int i = 0; i < Integer.parseInt(aReq.get("numberOfMessages", "0")); i++) {
+
+            String aUnique = aReq.get(msgType + "_" + i + "_Unique");
+            /*         String newString = new String(aReq.get("msg_"+i).getBytes("UTF-8"), "UTF-8");
+             System.out.println("MESSAGE SAVE ===  "+newString +" aUNIQUE is === "+aUnique);
+            
+             */
+            String encodedMsg = new String(request.getParameter("msg_" + i).getBytes("UTF-8"), "UTF-8");
+            System.out.println("MESSAGE SAVE ===  " + SdcMisc.encodeForDb(encodedMsg) + " aUNIQUE is === " + aUnique);
+
+            String status = reviewMessageForChars(encodedMsg);
+            if(!status.isEmpty()){
+                statusMsg += status;
+                break;
+            }
+
+            UmeClubMessages umeClubMessages = new UmeClubMessages();
+            umeClubMessages.setaUnique(aUnique);
+            umeClubMessages.setaMessage(encodedMsg);
+
+            if (!"".equals(aUnique)) {
+                String sqlstry = "UPDATE mobileClubs_Messages set aMessage='" + umeClubMessages.getaMessage() + "'where aUnique='" + umeClubMessages.getaUnique() + "'";
+                System.out.println("QUERY TO BE RUN ==== " + sqlstry);
+                umeclubdetailsdao.updateClubMessage(umeClubMessages);
+            } else {
+                umeClubMessages.setaClubUnique(unq);
+                umeClubMessages.setaMessageType(msgType);
+                umeClubMessages.setaCreated(new Date());
+                umeclubdetailsdao.saveClubMessage(umeClubMessages);
+            }
+        }
+
+        billableList.clear();
+        welcomeList.clear();
+        reminderList.clear();
+        stopList.clear();
+        followUpList.clear();
+        teaserList.clear();
+        billingdaemonList.clear();
+
+        intitializeMessageLists(billableList, welcomeList, reminderList, stopList, followUpList, teaserList, billingdaemonList, umeclubdetailsdao, unq, msgType);
+        /* 
+         billableList=umeclubdetailsdao.getUmeClubMessages(unq,"Billable");
+         welcomeList=umeclubdetailsdao.getUmeClubMessages(unq,"Welcome");
+         reminderList=umeclubdetailsdao.getUmeClubMessages(unq,"Reminder");
+         stopList=umeclubdetailsdao.getUmeClubMessages(unq,"Stop");
+         followUpList=umeclubdetailsdao.getUmeClubMessages(unq,"FollowUp");
+         teaserList=umeclubdetailsdao.getUmeClubMessages(unq,"Teaser");
+         */
+
+    }
+
+    if (!delete.equals("")) {
+
+        String aUnique = aReq.get("msgunique");
+        UmeClubMessages umeClubMessages = new UmeClubMessages();
+        umeClubMessages.setaUnique(aUnique);
+        umeclubdetailsdao.deleteClubMessage(umeClubMessages);
+
+    }
+    billableList.clear();
+    welcomeList.clear();
+    reminderList.clear();
+    stopList.clear();
+    followUpList.clear();
+    teaserList.clear();
+    billingdaemonList.clear();
+
+    intitializeMessageLists(billableList, welcomeList, reminderList, stopList, followUpList, teaserList, billingdaemonList, umeclubdetailsdao, unq, msgType);
+
+
+%>
+
+<%!
+    public void intitializeMessageLists(java.util.List<UmeClubMessages> billableList, java.util.List<UmeClubMessages> welcomeList, java.util.List<UmeClubMessages> reminderList,
+            java.util.List<UmeClubMessages> stopList, java.util.List<UmeClubMessages> followUpList, java.util.List<UmeClubMessages> teaserList, java.util.List<UmeClubMessages> billingdaemonList, UmeClubDetailsDao umeclubdetailsdao, String unq, String msgType) {
+
+        if (msgType.equals("")) {
+            copyList(billableList, umeclubdetailsdao.getUmeClubMessages(unq, "Billable"));
+            copyList(welcomeList, umeclubdetailsdao.getUmeClubMessages(unq, "Welcome"));
+            copyList(reminderList, umeclubdetailsdao.getUmeClubMessages(unq, "Reminder"));
+            copyList(stopList, umeclubdetailsdao.getUmeClubMessages(unq, "Stop"));
+            copyList(followUpList, umeclubdetailsdao.getUmeClubMessages(unq, "FollowUp"));
+            copyList(teaserList, umeclubdetailsdao.getUmeClubMessages(unq, "Teaser"));
+            copyList(billingdaemonList, umeclubdetailsdao.getUmeClubMessages(unq, "SubscriptionBill"));
+        } else if (msgType.equals("Billable")) {
+            copyList(billableList, umeclubdetailsdao.getUmeClubMessages(unq, "Billable"));
+        } else if (msgType.equals("Welcome")) {
+            System.out.println("clubmessage called upon inside msgType.equalswelcome ");
+            copyList(welcomeList, umeclubdetailsdao.getUmeClubMessages(unq, "Welcome"));
+        } else if (msgType.equals("Reminder")) {
+            copyList(reminderList, umeclubdetailsdao.getUmeClubMessages(unq, "Reminder"));
+        } else if (msgType.equals("Stop")) {
+            copyList(stopList, umeclubdetailsdao.getUmeClubMessages(unq, "Stop"));
+        } else if (msgType.equals("FollowUp")) {
+            copyList(followUpList, umeclubdetailsdao.getUmeClubMessages(unq, "FollowUp"));
+        } else if (msgType.equals("Teaser")) {
+            copyList(teaserList, umeclubdetailsdao.getUmeClubMessages(unq, "Teaser"));
+        } else if (msgType.equals("SubscriptionBill")) {
+            copyList(billingdaemonList, umeclubdetailsdao.getUmeClubMessages(unq, "SubscriptionBill"));
+        }
+
+    }
+
+    public void copyList(java.util.List<UmeClubMessages> destList, java.util.List<UmeClubMessages> srcList) {
+        for (int i = 0; i < srcList.size(); i++) {
+            destList.add(srcList.get(i));
+        }
+    }
+
+    private String reviewMessageForChars(String original) {
+
+        StringBuilder sb = new StringBuilder(original);
+        String aux = "";
+        for (int isb = 0; isb < sb.length(); isb++) {
+            int origCharAsInt = (int) sb.charAt(isb);
+            switch (origCharAsInt) {
+
+                case ((int) '\u2018'): aux = " left single quote"; break;
+                case ((int) '\u2019'): aux = " right single quote"; break;
+                case ((int) '\u201A'): aux = " lower quotation mark"; break;
+                case ((int) '\u201B'): aux = " single high reversed quotation mark"; break;
+                case ((int) '\u201C'): aux = " left double quote"; break;
+                case ((int) '\u201D'): aux = " right double quote"; break;
+                case ((int) '\u201E'): aux = " double low quotation mark"; break;
+                case ((int) '\u201F'): aux = " double high reversed quotation mark"; break;
+
+                case ((int) '\u2039'): aux = " Single Left-Pointing Quotation Mark"; break;
+                case ((int) '\u203A'): aux = " Single Right-Pointing Quotation Mark"; break;
+                default:
+                    break;
+            }
+        }
+
+        if (!aux.isEmpty()) {
+            aux = "One message contains " + aux + ", review your messages";
+        }
+        return aux;
+    }
+
+
+%>

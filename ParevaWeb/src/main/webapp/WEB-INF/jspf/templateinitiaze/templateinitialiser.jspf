@@ -1,0 +1,38 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@page import="com.mitchellbosecke.pebble.template.PebbleTemplate"%>
+<%@page import="com.mitchellbosecke.pebble.PebbleEngine"%>
+<%@page import="com.mitchellbosecke.pebble.loader.ClasspathLoader"%>
+
+<%
+
+
+
+ClasspathLoader loader = new ClasspathLoader();
+loader.setPrefix(("templates/testtemplate/"));
+loader.setSuffix(".html");
+
+System.out.println("REAL PATH "+getServletContext());
+
+
+            PebbleEngine engine = new PebbleEngine(loader);
+            System.out.println("Loader Information "+loader.getPrefix()+"  "+loader.getSuffix());
+
+           PebbleTemplate compiledTemplate = engine.getTemplate("/var/lib/tomcat7/webapps/ROOT/templates/testtemplate/base.html");
+
+//PebbleTemplate compiledTemplate = engine.getTemplate("base");
+
+
+
+          
+           /*Writer writer = new StringWriter();
+           Map<String, Object> context = new HashMap();
+           
+context.put("websiteTitle", "Template Engine");
+context.put("mycontent", "First Desgin of pebble");
+
+compiledTemplate.evaluate(writer, context);
+
+
+String output = writer.toString();*/
+    
+%>

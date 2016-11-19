@@ -1,0 +1,25 @@
+<%
+String templatePathPrefix=getServletContext().getInitParameter("parsed")+"admin/";
+System.out.println("Template Path Prefic: "+templatePathPrefix);
+String templateDirectory=request.getParameter("templateDirectory");
+if(templateDirectory==null){
+	templateDirectory=(String)request.getAttribute("templateDirectory");
+}
+
+String templateName=request.getParameter("templateName");
+if(templateName==null){
+	templateName=(String)request.getAttribute("templateName");
+}
+String templatePath="";
+if(templateName.contains("/")){
+	templateName=templateName.substring(templateName.indexOf("/")+1);
+	//templatePath=templatePathPrefix+templateName;
+}
+	templatePath=templatePathPrefix+templateDirectory+"/"+templateName;
+templatePath=templatePath.replace(".jsp",".html");
+System.out.println("Template Name: "+templateName);
+System.out.println("Template Directory: "+templateDirectory);
+System.out.println("TemplatePath: "+templatePath);
+
+	
+%>

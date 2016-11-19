@@ -1,0 +1,65 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeLanguagePropertyDao langpropdao=null;
+UmeSmsGatewayDao smsgatewaydao=null;
+UmeTempCache umesdc=null;
+try{
+    ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+    ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+    langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+    smsgatewaydao=(UmeSmsGatewayDao) ac.getBean("umesmsgatewaydao");
+    umesdc=(UmeTempCache) ac.getBean("umesdc");
+}
+catch(Exception e){}
+
+
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+String statusMsg = "";
+
+SdcSmsGateway item = null;
+UmeDomain sdcd= null;
+SdcLanguage sdcl = null;
+String key = "";
+String value = "";
+String dmName = "";
+String lngCode = ""; 
+
+String name = aReq.get("name");
+String dmid = aReq.get("dmid");
+String lang = aReq.get("lng");
+String add = aReq.get("add");
+
+if (!add.equals("")) {
+    
+    if (name.equals("")) statusMsg = "Please type in Gateway name.";
+    else {
+        
+        item = new SdcSmsGateway();
+        item.setName(name);
+        smsgatewaydao.saveItem(item);
+        
+        smsgatewaydao.initializeGateways();
+    }
+}
+
+
+%>

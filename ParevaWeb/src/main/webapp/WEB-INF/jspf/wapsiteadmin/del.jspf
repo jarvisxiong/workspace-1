@@ -1,0 +1,29 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "iso-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "del";
+//***************************************************************************************************
+
+String client = aReq.get("clnt");
+String picId = aReq.get("picid");
+String srvc = aReq.get("srvc");
+String cmd = aReq.get("cmd");
+String pic = aReq.get("pic");
+String fp = aReq.get("fp");
+String srcp = aReq.get("srcp", "selpic");
+
+
+int cs=4;
+String bgColor="";
+%>

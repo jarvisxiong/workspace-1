@@ -1,0 +1,268 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "modpromo2";
+//***************************************************************************************************
+
+String imageDir = System.getProperty("document_root") + "/images/javagames/promos/";
+boolean keepOldFormat = true;
+String imgFormat = "gif";
+
+String srvc = aReq.get("srvc");
+String cmd = aReq.get("cmd");
+String ss = aReq.get("ss");
+String updpic = Misc.hex8Decode(aReq.get("updpic"));
+String pic = aReq.get("pic");
+String delpic = aReq.get("delpic");
+String restype = aReq.get("restype");
+
+String dm = Misc.getCookie("_MXMDOMAINUNIQUE", request);
+String subpage = Misc.getCookie("_MXMSUBPAGEUNIQUE", request);
+
+if (dm.equals("") || srvc.equals("") || cmd.equals("")) { out.println("domain / service / cmd missing"); return; }
+
+Query query=null, query2=null;
+Transaction trans=dbsession.beginTransaction();
+String sqlstr = "";
+String statusMsg ="";
+String statusMsg2 = "";
+String[] props = null;
+String[] pprops = null;
+String[] gprops = null;
+String[] dprops = null;
+
+String promoUnique = "";
+String item = ""; 
+boolean resample = false;
+String srvcTitle = "";
+String domainName = "";
+
+if (cmd.equals("hotmaster")) srvcTitle = "Hot Master Tone";
+
+Enumeration e = request.getParameterNames();
+for (;e.hasMoreElements();) {
+    String elem = (String) e.nextElement();
+    if (elem.startsWith("res_")) {
+        resample = true;
+        promoUnique = elem.substring(4);
+        break;
+    }
+}    
+
+if (!delpic.equals("")) {
+    
+    File ff = new File(imageDir + Misc.hex8Decode(delpic));
+    System.out.println("ff: " + ff);
+    if (ff.exists() && !ff.isDirectory()) ff.delete();
+    sqlstr = "UPDATE clientPromoImages SET aImage='',aWidth='0',aHeight='0' WHERE aUnique='" + pic + "'";
+    System.out.println(sqlstr);
+    query=dbsession.createSQLQuery(sqlstr);
+    int stat=query.executeUpdate();
+}
+else if (resample) {
+    
+    try {    
+        String src = aReq.get("resrc_" + promoUnique);             
+        System.out.println(src);
+        String newimg = "";
+        BufferedImage orgImg = null;
+        BufferedImage srcimg = ImageIO.read(new File(imageDir + src));
+        System.out.println("SRC: " + srcimg);
+
+        sqlstr = "SELECT * FROM clientPromoImages WHERE aPromoUnique='" + promoUnique + "'";
+        query=dbsession.createSQLQuery(sqlstr).addScalar("aImage");
+        java.util.List result=query.list();
+        for(Object o:result) { 
+            String row=o.toString();
+            File oldimg = new File(imageDir + row);
+            if (oldimg.exists()) oldimg.delete();
+        }
+       
+
+        if (keepOldFormat) {
+            if (src.endsWith(".gif")) imgFormat = "gif";
+            else if (src.endsWith(".png")) imgFormat = "png";
+            else if (src.endsWith(".jpg")) imgFormat = "jpg";
+        }
+
+        int sizeIndex = 3;
+        if (restype.equals("full")) sizeIndex = 3;
+        else if (restype.equals("shot")) sizeIndex = 4;
+        else if (restype.equals("thumb")) sizeIndex = 5;
+        else if (restype.equals("icon")) sizeIndex = 6;
+
+        for (int i=4; i>0; i--) {
+            newimg = Misc.generateUniqueId() + "." + imgFormat;
+            int ww = (((Integer[])SdkTempCache.xhtmlProfiles.get(i-1))[sizeIndex]).intValue();        
+            ImageResize.resample(srcimg, imageDir + newimg, ww, -1);   
+            System.out.println(i + ": " + new File(imageDir + newimg));
+            orgImg = ImageIO.read(new File(imageDir + newimg));
+            int iw = orgImg.getWidth(null);
+            int ih = orgImg.getHeight(null);
+
+            sqlstr = "UPDATE clientPromoImages SET aImage='" + newimg + "', aWidth='" + iw + "',aHeight='" + ih + "' WHERE aPromoUnique='" + promoUnique + "' AND aProfile='" + i + "'";
+            System.out.println(sqlstr);
+            query=dbsession.createSQLQuery(sqlstr);
+            int stat=query.executeUpdate();
+        }
+    } catch (Exception ee) {ee.printStackTrace();}
+    
+}
+else if (!updpic.equals("")) { 
+    
+    sqlstr = "SELECT * FROM clientPromoImages WHERE aUnique='" + pic + "'";
+    System.out.println(sqlstr);
+    query=dbsession.createSQLQuery(sqlstr).addScalar("aImage");
+    java.util.List result1=query.list();
+    
+    if (result1.size()>0) {
+        for(Object o1:result1){
+            String row1=o1.toString();
+        File oldimg = new File(imageDir + row1);
+        if (oldimg.exists()) oldimg.delete();
+               }
+    }
+        
+    if (keepOldFormat) {
+        if (updpic.endsWith(".gif")) imgFormat = "gif";
+        else if (updpic.endsWith(".png")) imgFormat = "png";
+        else if (updpic.endsWith(".jpg")) imgFormat = "jpg";
+    }
+          
+    BufferedImage orgImg = ImageIO.read(new File(imageDir + "source/" + updpic));
+    int iw = orgImg.getWidth(null);
+    int ih = orgImg.getHeight(null);
+    
+    String newimg = Misc.generateUniqueId() + "." + imgFormat;
+    
+    if (updpic.toLowerCase().endsWith("." + imgFormat)) { FileUtil.copyFile(imageDir + "source/" + updpic, imageDir + newimg); }
+    //else if (updpic.toLowerCase().endsWith(".jpg")) { newimg += ".jpg"; FileUtil.copyFile(imageDir + "source/" + updpic, imageDir + newimg); }
+    else {
+        System.out.println("Resampling from original.");        
+        ImageResize.resample(orgImg, imageDir + newimg, iw, ih);
+    }       
+    
+    sqlstr = "UPDATE clientPromoImages SET aImage='" + newimg + "', aWidth='" + iw + "', aHeight='" + ih + "' WHERE aUnique='" + pic + "'";
+    query=dbsession.createSQLQuery(sqlstr);
+    int stat=query.executeUpdate();
+    
+}
+else if (ss.equals("1")) { 
+    
+    e = request.getParameterNames();
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("item_")) {
+            item = aReq.get(elem);
+            promoUnique = elem.substring(5);
+            sqlstr = "UPDATE clientPromoPages SET aJavaUnique='" + item + "',aIndex='" + aReq.get("ind_" + promoUnique) + "'"
+                    + " WHERE aPromoUnique='" + promoUnique + "'";
+            query=dbsession.createSQLQuery(sqlstr);
+            int stat=query.executeUpdate();
+        }
+    }    
+}
+
+
+java.util.List dms = new ArrayList();
+sqlstr = "SELECT * FROM domains WHERE aDomainUnique!='fjq32V44EqwaKUb' AND aActive='1'";
+query=dbsession.createSQLQuery(sqlstr).addScalar("aDomainUnique").addScalar("aName");
+java.util.List result2=query.list();
+for(Object o2:result2) {
+    Object[] row2=(Object[]) o2;
+    String domainunique=String.valueOf(row2[0]);
+    
+    if (domainunique.equals(dm)) { domainName = String.valueOf(row2[1]); break; }
+ }
+
+java.util.List list = new ArrayList();
+Hashtable pics = new Hashtable();
+
+if (!dm.equals("") && !srvc.equals("")) {
+    
+    sqlstr = "SELECT * FROM clientPromoPages WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "' ORDER BY aIndex";
+    System.out.println(sqlstr);
+    query=dbsession.createSQLQuery(sqlstr);
+    java.util.List res=query.list();
+    if (res.size()<=0) {
+        int k=0;
+        if (cmd.equals("hotmaster")) k=5;        
+        for (int t=1; t<k; t++) {
+            sqlstr = "INSERT INTO clientPromoPages VALUES('" + Misc.generateUniqueId() + "','" + srvc + "','','" + t + "','" + MiscDate.now24sql() + "','" + dm + "')";
+            query=dbsession.createSQLQuery(sqlstr);
+            int stat=query.executeUpdate();
+        }        
+    }
+   
+                     
+    sqlstr = "SELECT * FROM clientPromoPages";
+    if (cmd.equals("hotmaster")) sqlstr += " LEFT JOIN masterTones AS mt ON mt.aUnique=aJavaUnique";
+    sqlstr += " WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "' ORDER BY aIndex";
+    
+    System.out.println(sqlstr);
+    query=dbsession.createSQLQuery(sqlstr).addScalar("aPromoUnique").addScalar("aJavaUnique").addScalar("aIndex").addScalar("aSongName").addScalar("aArtist");
+    java.util.List result3=query.list();
+    for(Object o3:result3) {
+        Object [] row3=(Object[]) o3;
+        props = new String[5];        
+        props[0] = String.valueOf(row3[0]);
+        props[1] = String.valueOf(row3[1]);
+        props[2] = String.valueOf(row3[2]);  
+        
+        if (cmd.equals("hotmaster")) {
+            props[3] = String.valueOf(row3[3]);
+            props[4] = String.valueOf(row3[4]);
+        }
+        if (props[3]==null) props[3] = "";
+        if (props[4]==null) props[4] = "";
+         
+        for (int g=1; g<5; g++) {
+            pprops = new String[4];
+            for (int k=0; k<pprops.length; k++) pprops[k] = "";
+
+            sqlstr = "SELECT * FROM clientPromoImages WHERE aPromoUnique='" + props[0] + "' AND aProfile='" + g + "'";
+            //System.out.println(sqlstr);
+            query2=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aImage").addScalar("aWidth").addScalar("aHeight");
+            java.util.List result4=query2.list();
+            if (result4.size()>0) {
+                for(Object o4:result4){
+                    Object[] row4=(Object[]) o4;
+                pprops[0] = String.valueOf(row4[0]);
+                pprops[1] = String.valueOf(row4[1]);
+                pprops[2] = String.valueOf(row4[2]);
+                pprops[3] = String.valueOf(row4[3]);
+                               }
+            }
+            else {
+                pprops[0] = Misc.generateUniqueId();
+                sqlstr = "INSERT INTO clientPromoImages VALUES('" + pprops[0] + "','" + props[0] + "','" + g + "','','0','0')";
+                System.out.println(sqlstr);
+                query=dbsession.createSQLQuery(sqlstr);
+                int stat=query.executeUpdate();
+            } 
+            
+            pics.put(props[0] + "_" + g, pprops);
+        }
+
+        list.add(props);        
+    }
+    
+     
+}
+
+trans.commit();
+dbsession.close();
+%>

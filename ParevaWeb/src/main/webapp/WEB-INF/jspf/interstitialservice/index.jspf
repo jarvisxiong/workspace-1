@@ -1,0 +1,415 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+<%
+
+String parsedTemplateLocation=getServletContext().getInitParameter("parsed");
+String staticTemplateLocation=getServletContext().getInitParameter("static");
+
+/* String parsedTemplateLocation="F:/JAVA PROJECTS/UME/Templates/parsed/";
+String staticTemplateLocation="/var/www/lib/templates/static/";
+ */
+
+	//***************************************************************************************************////
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String adminGroup = aReq.getAdminGroup();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+UmeUser umeuser = (UmeUser) request.getAttribute("sdc_user");
+request.setAttribute("umedomain",(UmeDomain) request.getAttribute("umedomain"));
+UmeDomain umeDomain=(UmeDomain) request.getAttribute("umedomain");
+System.out.println("Domain URL: "+umeDomain.getDefaultUrl());
+//UmeUser umeuser = aReq.getUser();
+String userGroupUnique=umeuser.getUserGroup();
+String action="";
+
+String fileName = "index";
+//***************************************************************************************************
+String imageDir = System.getProperty("document_root") + "/images/javagames/promos/";
+DomainParameterDao domainparamdao=null;
+InitCmsParameters initcmsparam=null;
+ClientDao clientdao=null;
+
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+domainparamdao=(DomainParameterDao) ac.getBean("domainparameterdao");
+initcmsparam=(InitCmsParameters) ac.getBean("cmsparameters");
+clientdao=(ClientDao)ac.getBean("clientdao");
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+
+
+
+String sqlstr = "";
+String statusMsg ="";
+String[] props = null;
+String regionprops=null;
+String demo = "";
+String adultcontent = "";
+String client = "";
+String domainlink = "";
+String sublink = "";
+String clientunique="";
+Map params = null;
+java.util.List<String> regionlist=new java.util.ArrayList<String>();
+
+String[][] scats = new String[8][2];
+scats[0][0]= "General"; scats[0][1]= "ADC1206625351115";
+scats[1][0]= "Java Games"; scats[1][1]= "AAB1151391710156";
+scats[2][0]= "Videos"; scats[2][1]= "ADC1211964213751";
+scats[3][0]= "Master Tones"; scats[3][1]= "ADC1206625351114";
+scats[4][0]= "Images"; scats[4][1]= "ADC1206625351116";
+scats[5][0]= "Poly Tones"; scats[5][1]= "";
+//scats[6][0]= "True Tones"; scats[6][1]= "1019977323421CDA";
+scats[6][0]= "Fonecta"; scats[6][1]= "9228805798921CDS";
+scats[7][0]= "Quiz"; scats[7][1]= "5725759534341llun";
+
+
+java.util.List slist = null;
+java.util.List list = new ArrayList();
+java.util.List modules = new ArrayList();
+boolean foundDomain = false;
+java.util.List dms = new ArrayList();
+java.util.List sublist = new ArrayList();
+java.util.List classificationList=new ArrayList();
+java.util.List contentTypeList=new ArrayList();
+java.util.List templateList=new ArrayList();
+java.util.List templateFiles=new ArrayList();
+java.util.List domainsLandingPages=new ArrayList();
+java.util.List domainsLandingPagesToBeAdded=new ArrayList();
+java.util.List cssFileList=new ArrayList();
+java.util.List landingPages=new ArrayList();
+java.util.List networks=new ArrayList();
+
+
+
+
+String location="";
+String staticFolderLocation="";
+String cssLocation="";
+
+String dm = aReq.get("dm");
+System.out.println("domain_name = "+dm);
+String regionid="all";
+String themeName=aReq.get("themeName");
+String themeStatus=aReq.get("themeStatus");
+String template_page=aReq.get("template_page");
+String landingPage=aReq.get("landing_page");
+String classification=aReq.get("classification");
+String contentType=aReq.get("contenttype");
+String elementType=aReq.get("elementtype");
+String cssFile=aReq.get("cssFile");
+String numberOfElements=aReq.get("number_of_elements");
+String updateLandingPage=aReq.get("action","");
+String updateThemeSetting=aReq.get("editTheme","");
+String addLandingPage=aReq.get("addLanding");
+String landingStatus=aReq.get("landingStatus").equals("true")?"1":"0";
+System.out.println("Landing Status: "+landingStatus);
+String category=aReq.get("category");
+String pageName=aReq.get("page_name");
+String pageType=aReq.get("page_type");
+String networkName=aReq.get("networkName");
+String startTime=aReq.get("startTime");
+String endTime=aReq.get("endTime");
+String addTemplatePage=aReq.get("addTemplatePage");
+String selectedService=aReq.get("selectService");
+
+
+
+String subpage = aReq.get("subpage");
+String add = aReq.get("add");
+String addsub = aReq.get("addsub");
+String delsub = aReq.get("delsub");
+String save = aReq.get("ss");
+String addSrvc = aReq.get("addsrvc");
+
+String activeTemplate="";
+
+System.out.println("ADD SERVICE = "+addSrvc);
+int ind = Integer.parseInt(aReq.get("ind","1"));
+String cmd = aReq.get("cmd");
+String srvc = aReq.get("srvc");
+String newsub = aReq.get("newsub");
+
+
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+
+sqlstr="select aDomainUnique,aName,aDefaultUrl from domains where aKey='interstitial' AND aActive='1' order by aName";
+
+
+query=dbsession.createSQLQuery(sqlstr).addScalar("aDomainUnique").addScalar("aName").addScalar("aDefaultUrl");//.addScalar("aClientUnique");
+java.util.List result=query.list();
+for(Object o:result) {
+props = new String[4];
+Object [] row=(Object[]) o;
+props[0] = String.valueOf(row[0]);
+props[1] = String.valueOf(row[1]);
+props[2] = String.valueOf(row[2]);
+//props[3] = String.valueOf(row[3]);
+//props[4] = String.valueOf(row[4]);
+dms.add(props);
+
+}
+
+System.out.println("DOMAIN: " + dm);
+
+
+if(!dm.equals("")){
+	
+	File templatesForRegion=new File(parsedTemplateLocation+regionid);
+	System.out.println("directory "+templatesForRegion.getPath()+ " Exist or not: "+templatesForRegion.exists());
+	String[] templates=templatesForRegion.list();
+	
+
+		if(!addLandingPage.equals("")){
+			/* sqlstr="SELECT * from domainsTemplates where aDomainUnique='"+dm+"' and templateName='"+themeName+"'";
+			System.out.println("domainsTemplates Select Query = "+sqlstr);
+			query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique");
+			String themeUnique="";
+			java.util.List themeList=query.list();
+			for(Object o1:themeList){
+		    	themeUnique=o1.toString();
+		    	System.out.println("ThemeUnique: "+themeUnique);
+		    } */
+
+			sqlstr = "INSERT INTO domainsLandingPages (aUnique,aDomainUnique,aTemplateName,aLandingPage) VALUES('" + Misc.generateUniqueId() + "','" + dm + "','" + themeName + "','" + addLandingPage.trim() + "')";
+			System.out.println("domainsLandingPages Insert Query = "+sqlstr);
+			query=dbsession.createSQLQuery(sqlstr);
+		    int status=query.executeUpdate();
+		}
+
+		if(updateLandingPage.equals("edit")){
+			  sqlstr="update domainsLandingPages set "+ 
+			  	"aStartTime='"+startTime+"',"+ 
+			  	"aEndTime='"+endTime+"',"+ 
+			  	"aNetwork='"+networkName+"',"+ 
+				"aStatus='"+landingStatus+"' "+ 
+			  	
+				"where aDomainUnique='"+dm+"' and aLandingPage='"+landingPage+"'";
+			  System.out.println("domainsLandingPages Update Query = "+sqlstr);
+				query=dbsession.createSQLQuery(sqlstr);
+		    int status=query.executeUpdate();
+		}else if (updateLandingPage.equals("delete")){
+			sqlstr="delete from domainsLandingPages where aDomainUnique='"+dm+"' and aLandingPage='"+landingPage+"'";
+			query=dbsession.createSQLQuery(sqlstr);
+		    int status=query.executeUpdate();
+		}
+
+
+
+		if(!themeName.equals("")){
+			
+			sqlstr = "SELECT count(*) as count FROM domainsTemplates WHERE aDomainUnique='" + dm + "'";
+			    int count = 0;
+			    query=dbsession.createSQLQuery(sqlstr).addScalar("count");
+			    java.util.List countList=query.list();
+
+			    for(Object o1:countList)
+			                {
+			    		String row1=o1.toString();
+			    		count = Integer.parseInt(String.valueOf(row1)); 
+			                                    System.out.println("COUNTING BG : "+count);
+			    	}
+			    if(count==0){
+			    	
+			    	
+			    	sqlstr = "INSERT INTO domainsTemplates VALUES('" + Misc.generateUniqueId() + "','" + dm + "','" + parsedTemplateLocation+regionid+"/"+themeName + "'"
+			                + ",'.html','" + regionid + "','" + themeName + "','1','" + staticTemplateLocation+regionid+"/"+themeName + "')";
+			    	System.out.println("DomainsTemplates Insert Query = "+sqlstr);
+			    	query=dbsession.createSQLQuery(sqlstr);
+			        int status=query.executeUpdate(); 
+			    
+			    }else{
+				
+				sqlstr="Update domainsTemplates set templateFolder='"+parsedTemplateLocation+regionid+"/"+themeName + "', templateName='"+themeName+"',templateStaticFolder='"+staticTemplateLocation+regionid+"/"+themeName + "' where aDomainUnique='" + dm + "'";
+			    	System.out.println("DomainsTemplates Update Query = "+sqlstr);
+			    	query=dbsession.createSQLQuery(sqlstr);
+			        int status=query.executeUpdate(); 
+
+			    	
+
+								
+			    	 
+				}
+			
+			
+			
+		}
+		
+		if(templates!=null){
+			System.out.println("Template Name: "+templates[0]);
+		 for (int i = 0; i < templates.length; i++) {
+			 
+			File f = new File(parsedTemplateLocation+regionid+"/"+templates[i]);
+			if (f.isDirectory()){
+				
+				sqlstr = "SELECT * FROM domainsTemplates WHERE aDomainUnique='"
+						+ dm
+						+ "' and templateName='"
+						+ templates[i]+ "'";
+				System.out.println("Theme Data Query: "
+						+ sqlstr);
+				query = dbsession.createSQLQuery(sqlstr)
+						.addScalar("templateName")
+						.addScalar("status")
+						;
+				java.util.List tList = query.list();
+				if(tList.size()>0){
+				for (Object template : tList) {
+					Object[] templateRow = (Object[]) template;
+					HashMap templateMap = new HashMap();
+					templateMap.put("templateName",
+							String.valueOf(templateRow[0]));
+					templateMap.put("status",
+							String.valueOf(templateRow[1]));
+					templateList.add(templateMap);
+					if(String.valueOf(templateRow[1]).equals("1"))
+						activeTemplate=String.valueOf(templateRow[0]);
+					}
+				}else{
+					HashMap templateMap = new HashMap();
+					templateMap.put("templateName",templates[i]);
+					templateMap.put("status","0");
+					templateList.add(templateMap);
+					
+				}
+		}
+		 }
+		}
+		 
+		 
+		 sqlstr = "SELECT * FROM domainsTemplates WHERE aDomainUnique='"
+				+ dm + "' and status='1'";
+		query = dbsession.createSQLQuery(sqlstr)
+				.addScalar("templateFolder")
+				.addScalar("templateStaticFolder");
+		java.util.List templateLocationList = query.list();
+		if(templateLocationList.size()==1){
+		for (Object templateLocation : templateLocationList) {
+			Object[] templateLocationRow = (Object[]) templateLocation;
+			location = String.valueOf(templateLocationRow[0]);
+			staticFolderLocation = String
+					.valueOf(templateLocationRow[1]);
+
+		}
+		}
+				try {
+			if (!location.equals("")) {
+
+				File templateFolder = new File(location);
+				File[] templateFolderContents = templateFolder
+						.listFiles();
+				for (int k = 0; k < templateFolderContents.length; k++) {
+					templateFiles.add(templateFolderContents[k]
+							.getName());
+					if (templateFolderContents[k].getName().toLowerCase().contains(
+							"landing")) {
+
+						sqlstr = "SELECT * FROM domainsLandingPages WHERE aDomainUnique='"
+								+ dm
+								+ "' and aLandingPage='"
+								+ templateFolderContents[k]
+										.getName()
+										.substring(
+												0,
+												templateFolderContents[k]
+														.getName()
+														.indexOf("."))
+								+ "'";
+						System.out.println("Landing Data Query: "
+								+ sqlstr);
+						query = dbsession.createSQLQuery(sqlstr)
+								.addScalar("aLandingPage")
+								.addScalar("aStartTime")
+								.addScalar("aEndTime")
+								.addScalar("aNetwork")
+								.addScalar("aStatus");
+						java.util.List landingList = query.list();
+						for (Object landing : landingList) {
+							Object[] landingRow = (Object[]) landing;
+							HashMap landingMap = new HashMap();
+							landingMap.put("landingPage",
+									String.valueOf(landingRow[0]));
+							landingMap.put("startTime",
+									String.valueOf(landingRow[1]));
+							landingMap.put("endTime",
+									String.valueOf(landingRow[2]));
+							landingMap.put("network",
+									String.valueOf(landingRow[3]));
+							landingMap.put("status",
+									String.valueOf(landingRow[4]));
+
+							landingPages.add(landingMap);
+							/* System.out.println("Landing Page: "+landingMap.get("landingPage"));
+							System.out.println("Landing Page Status "+landingMap.get("status")); */
+							domainsLandingPages.add(String
+									.valueOf(landingRow[0]));
+
+						}
+					}
+					System.out.println("Files inside " + templateFolder
+							+ " = "
+							+ templateFolderContents[k].getName());
+
+				}
+
+				String templateName = "";
+				String lpage = "";
+				for (int i = 0; i < templateFiles.size(); i++) {
+					boolean added = false;
+					templateName = (String) templateFiles.get(i);
+					if (templateName.toLowerCase().contains("landing")) {
+						for (int j = 0; j < domainsLandingPages.size(); j++) {
+
+							lpage = (String) domainsLandingPages.get(j);
+							lpage = lpage + ".html";
+							/* System.out.println("Check Landing Pages: "+templateName);
+							System.out.println("domainsLandingPage: "+lpage); */
+							if (lpage.equals(templateName)) {
+								added = true;
+								break;
+							}
+						}
+						if (!added)
+							domainsLandingPagesToBeAdded
+									.add(templateName.substring(0,
+											templateName.indexOf(".")));
+					}
+
+				}
+				Collections.sort(templateFiles);
+				Collections.sort(landingPages);
+				System.out.println("Region Name = " + regionid);
+
+				cssLocation = staticFolderLocation + "/css";
+				File cssFileLocation = new File(cssLocation);
+				File[] cssFiles = cssFileLocation.listFiles();
+				for (int k = 0; k < cssFiles.length; k++) {
+					cssFileList.add(cssFiles[k].getName());
+					//if(templateFolderContents[k].getName().contains("landing"))
+					//	landingPages.add(templateFolderContents[k].getName());
+					//System.out.println("Files inside "+templateFolder+" = "+templateFolderContents[k].getName());
+				}
+				Collections.sort(cssFileList);
+				//Collections.sort(landingPages);
+				System.out.println("Region Name = " + regionid);
+			}
+		} catch (Exception e) {
+		}
+
+	}
+trans.commit();
+dbsession.close();
+
+%>
+

@@ -1,0 +1,188 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+LangProps lp = LangProps.getFromContext(service.getUnique(), fileName, langcode, domain, application, true);
+//***************************************************************************************************
+
+MastertoneDao mastertonedao=null;
+VideoClipDao videoclipdao=null;
+ClientDao clientdao=null;
+BgImageDao bgimagedao=null;
+JavaGameDao javagamedao=null;
+GifAnimDao gifanimdao=null;
+RingtoneDao ringtonedao=null;
+ContentProviderDao contentproviderdao=null; 
+
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+      
+          clientdao=(ClientDao) ac.getBean("clientdao");
+	  videoclipdao=(VideoClipDao)ac.getBean("videoclipdao");
+	  bgimagedao=(BgImageDao)ac.getBean("bgimagesdao");
+	  javagamedao=(JavaGameDao)ac.getBean("javagamedao");
+	  gifanimdao=(GifAnimDao)ac.getBean("gifanimdao");
+	  ringtonedao=(RingtoneDao)ac.getBean("ringtonedao");
+	  contentproviderdao=(ContentProviderDao)ac.getBean("contentproviderdao");
+	  mastertonedao=(MastertoneDao)ac.getBean("mastertonedao");
+     }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+
+String durl = System.getProperty(domain + "_url");
+
+HttpSession ses = request.getSession();
+
+String statusMsg = "";
+String flashid = "";
+String clip = "";
+
+String formSource = aReq.get("formsrc", "0");
+String itype = aReq.get("itype");
+String owner = aReq.get("owner");
+String sort = aReq.get("sort");
+String classification = aReq.get("classification");
+String index = aReq.get("si");
+String search = URLDecoder.decode(aReq.get("sss").trim());
+String clnt = aReq.get("clnt");
+String title = aReq.get("title").trim();
+String cat = aReq.get("cat");
+String del = aReq.get("del");
+
+if (del.equals("ok")) statusMsg = "Item deleted";
+else if (del.equals("error")) statusMsg = "Could not delete item";
+
+
+
+if (itype.equals("")) {
+    if (ses.getAttribute("iadmin_itype")!=null) itype = (String) ses.getAttribute("iadmin_itype");
+} else ses.setAttribute("iadmin_itype", itype);
+
+if (owner.equals("")) {
+    if (ses.getAttribute("iadmin_owner")!=null) owner = (String) ses.getAttribute("iadmin_owner");
+} else ses.setAttribute("iadmin_owner", owner);
+
+if (sort.equals("")) {
+    if (ses.getAttribute("iadmin_sort")!=null) sort = (String) ses.getAttribute("iadmin_sort");
+} else ses.setAttribute("iadmin_sort", sort);
+
+if (classification.equals("")) {
+    if (ses.getAttribute("iadmin_classification")!=null) classification = (String) ses.getAttribute("iadmin_classification");
+} else ses.setAttribute("iadmin_classification", classification);
+
+if (cat.equals("")) {
+    if (ses.getAttribute("iadmin_cat")!=null) cat = (String) ses.getAttribute("iadmin_cat");
+} else ses.setAttribute("iadmin_cat", cat);
+
+if (index.equals("")) {
+    if (ses.getAttribute("iadmin_index")!=null) index = (String) ses.getAttribute("iadmin_index");
+} else ses.setAttribute("iadmin_index", index);
+
+if (search.equals("") && !formSource.equals("1")) {
+    if (ses.getAttribute("iadmin_search")!=null) search = (String) ses.getAttribute("iadmin_search");
+} else ses.setAttribute("iadmin_search", search);
+
+
+if (index.equals("")) index = "0";
+if (itype.equals("all")) itype = "";
+if (owner.equals("all")) owner = "";
+if (classification.equals("all")) classification = "";
+int sIndex = Integer.parseInt(index);
+
+boolean isAdmin = sdcuser.getAdminGroup()>=9 || UmeTempCmsCache.isClient(sdcuser.getUserGroup());
+
+if (!isAdmin) owner = sdcuser.getUserGroup();
+
+ContentItem item = null;
+
+ContentSet cs = new ContentSet();
+cs.setStatus(-1); // all
+cs.setOnlyReleased(false);
+cs.setItemsPerPage(12);
+cs.setPageIndex(sIndex);
+cs.setCategory(cat);
+cs.setNumberOfTopPages(2);
+cs.setOwner(owner);
+cs.setSearchString(Misc.makeSqlSafe(search));
+cs.setTimeSpan(300);
+cs.setClassification(classification);
+
+
+if (itype.equals("java")) {
+    javagamedao.populate(cs);
+}
+else if (itype.equals("video")) {
+    videoclipdao.populate(cs);
+}
+else if (itype.equals("bgimage")) {
+    bgimagedao.populate(cs);
+}
+else if (itype.equals("mastertone")) {
+    if (owner.equals("ADC1215681657877")) cs.setOwner("sony");
+    else if (owner.equals("ADC1215681657878")) cs.setOwner("emi");
+    else if (owner.equals("ADC1215681657879")) cs.setOwner("warner");
+    cs.setItemsPerPage(25);
+    cs.setItemType("1");
+    mastertonedao.populate(cs);
+}
+else if (itype.equals("ringtone")) {
+    cs.setItemsPerPage(25);
+    ringtonedao.populate(cs);
+}
+else if (itype.equals("gifanim")) {
+    cs.setItemsPerPage(15);
+    gifanimdao.populate(cs);
+}
+else if (itype.equals("truetone")) {
+    cs.setItemsPerPage(25);
+    cs.setItemType("4");
+    mastertonedao.populate(cs);
+}
+else if (itype.equals("funtone")) {
+    cs.setItemsPerPage(25);
+    cs.setItemType("5");
+    mastertonedao.populate(cs);
+}
+
+
+java.util.List<Object> list = cs.getList();
+
+
+java.util.List<ItemCategory> catlist = UmeTempCmsCache.itemCategoryMap.get(itype);
+
+
+int count = cs.getItemCount();
+int pageCount = cs.getPageCount();
+int maxCount = cs.getItemsPerPage();
+int curPage = (sIndex/maxCount)+1;
+
+
+java.util.List<Client> clients  = clientdao.getAllClients("name");
+
+
+java.util.List<ContentProvider> cps  = contentproviderdao.getAllContentProviders("name");
+
+
+%>
+
+
+
+
+

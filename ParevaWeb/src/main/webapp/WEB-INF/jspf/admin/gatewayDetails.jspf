@@ -1,0 +1,75 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeLanguagePropertyDao langpropdao=null;
+UmeSmsGatewayDao smsgatewaydao=null;
+UmeTempCache umesdc=null;
+try{
+    ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+    ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+    langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+    smsgatewaydao=(UmeSmsGatewayDao) ac.getBean("umesmsgatewaydao");
+    umesdc=(UmeTempCache) ac.getBean("umesdc");
+}
+catch(Exception e){}
+
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+Calendar c = new GregorianCalendar();
+SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+String unique = aReq.get("unq");
+SdcSmsGateway item = umesdc.getSmsGatewayMap().get(unique);
+if (item==null) return;
+    
+String statusMsg = "";
+
+if (!aReq.get("submit").equals("")) {
+    
+    String name = aReq.get("name");
+    
+    if (name.equals("")) statusMsg = "Name-field can't be empty.";
+    else {
+        
+        item.setName(name);
+        item.setIp(aReq.get("ip"));
+        item.setPort(aReq.getInt("port"));
+        item.setLogin(aReq.get("login"));
+        item.setPassword(aReq.get("password"));
+        item.setEncryptPassword(aReq.getInt("encryptpw"));
+        item.setConnectionPool(aReq.getInt("conpool"));
+        item.setIsDefault(aReq.getInt("isdefault"));
+        item.setType(aReq.get("type"));
+        item.setTimeout(aReq.getInt("timeout"));
+        item.setHttpPath(aReq.get("httppath"));
+        item.setAccounts(aReq.get("accounts"));
+        item.setHttpPath2(aReq.get("httppath2"));
+        item.setMsisdnFormat(aReq.getInt("msisdnformat"));
+        
+        smsgatewaydao.saveItem(item);
+        smsgatewaydao.initializeGateways();
+        
+        statusMsg = "Information saved";
+    }  
+        
+}
+
+%>

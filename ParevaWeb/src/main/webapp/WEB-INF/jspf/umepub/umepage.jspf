@@ -1,0 +1,67 @@
+<%@ page pageEncoding="UTF-8" %>
+<%@ page import="ume.pareva.sdk.*" %>
+<%@ include file="/WEB-INF/jspf/coreimport.jspf" %>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String domain = aReq.getDomain();
+String anyxSrvc = aReq.getAnyxService();
+String anyxPage = aReq.getAnyxPage();
+String exp = aReq.getAnyxExp();
+String anyxMenu = aReq.getAnyxMenu();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "umepage";
+//***************************************************************************************************
+
+String topFrame = aReq.get("top");
+if (topFrame.equals("")) topFrame = "top.jsp";
+
+String publicDir = System.getProperty("dir_" + domain + "_pub");
+publicDir="umepub";
+
+String menuDir = publicDir;
+String sDir = System.getProperty("dir_" + anyxSrvc);		
+if (sDir==null || sDir.equals("")) sDir = publicDir;
+
+int topframeHeight = 114;
+						
+if (!uid.equals("")) {					
+    menuDir = System.getProperty("dir_" + domain + "_pri");
+    topframeHeight = 120;
+}		
+		
+if (!sDir.startsWith("/")) sDir = "/" + sDir;
+if (!sDir.endsWith("/") && !anyxPage.startsWith("/")) anyxPage = "/" + anyxPage;		
+else if (sDir.endsWith("/") && anyxPage.startsWith("/")) anyxPage = anyxPage.substring(1);
+
+//System.out.println("==umepage.jsp== VALUES "+sDir+"  ANYXPAGE "+anyxPage+" menuDir: "+menuDir+" topFrame "+topFrame);
+%>
+
+<%@ include file="/WEB-INF/jspf/templatecheck.jspf" %>
+
+<%
+File template=new File(templatePath);
+if(template.exists()){
+	PrintWriter writer = response.getWriter();
+	Map<String, Object> context = new HashMap();
+	
+	System.out.println("Rendering Template");
+	PebbleEngine adminEngine=(PebbleEngine)request.getAttribute("adminEngine");
+	adminEngine.getLoader().setPrefix(templatePathPrefix+templateDirectory);
+	adminEngine.getLoader().setSuffix(".html");
+	context.put("contenturl","http://pareva.umelimited.com");
+
+	adminEngine.getTemplate(templateName.substring(0,templateName.indexOf("."))).evaluate(writer, context);
+	
+	return;
+}
+
+%>
+
+

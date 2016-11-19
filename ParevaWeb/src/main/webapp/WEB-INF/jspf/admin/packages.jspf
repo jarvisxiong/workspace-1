@@ -1,0 +1,72 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeTempCache anyxsdc=null;
+UmeLanguagePropertyDao langpropdao=null;
+UmePackageDao umepackagedao=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+anyxsdc=(UmeTempCache) ac.getBean("umesdc");
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+umepackagedao=(UmePackageDao) ac.getBean("umepackage");
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+SdcPackage item = null;
+
+String statusMsg="";
+String addName="";
+
+if (!aReq.get("add").equals("")) {
+
+    String name = aReq.get("addName");
+    if (name.equals("")) statusMsg = lp.get(5);
+    else {
+        item = new SdcPackage();
+        item.setName(name);
+        if (umepackagedao.addItem(item)) {
+            umepackagedao.initializePackages();
+            statusMsg = lp.get(1);
+        }
+        else statusMsg = lp.get(2);
+    }
+
+}
+if (!aReq.get("delete").equals("")) {
+
+    Enumeration e = request.getParameterNames();
+
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("del_")) umepackagedao.deleteItem(elem.substring(4));
+    }
+
+    umepackagedao.initializePackages();
+}
+
+java.util.List<SdcPackage> list = anyxsdc.getPackageList();
+
+
+%>

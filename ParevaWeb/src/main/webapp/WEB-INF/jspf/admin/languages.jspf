@@ -1,0 +1,117 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeLanguagePropertyDao langpropdao=null;
+UmeTempCache umesdc=null;
+UmeLanguageDao languagedao=null;
+UmeServiceMenuDao servicemenudao=null;
+
+try{
+    ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+    ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+    langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+    languagedao=(UmeLanguageDao) ac.getBean("umelanguagedao");
+    servicemenudao=(UmeServiceMenuDao) ac.getBean("umeservicemenudao");
+    umesdc=(UmeTempCache) ac.getBean("umesdc");
+}
+catch(Exception e){}
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+SdcLanguage item = null;
+
+String statusMsg="";
+String copyExist = "";
+String addName="";
+String addCode="";
+
+String addEnc = aReq.get("addEnc", "utf-8");
+String addSheet = aReq.get("addSheet", "/images/anyx.css");
+String addFileEnc = aReq.get("addFileEnc", "iso-8859-1");
+
+String delMenus = "";
+
+String saveButton="";
+String addButton="";
+String deleteButton="";
+
+addButton = aReq.get("add");
+deleteButton = aReq.get("delete");
+
+languagedao.initializeLanguages();
+
+if (!aReq.get("add").equals("")) {
+
+    copyExist = aReq.get("copyExist");
+    if (!copyExist.equals("")) copyExist = "checked";
+    addName = aReq.get("addName");
+    addCode = aReq.get("addCode");
+    
+
+    try {
+        String test = new String(addName.getBytes(), addEnc);
+        test = new String(addName.getBytes(), addFileEnc);
+        
+        if (!addName.equals("")) {
+
+            item = new SdcLanguage();
+            item.setLanguageName(addName);
+            item.setLanguageCode(addCode);
+            item.setEncoding(addEnc);
+            item.setStylesheet(addSheet);
+            item.setFileEncoding(addFileEnc);
+
+            if (languagedao.addItem(item)) {
+                if (!copyExist.equals("")) servicemenudao.copyMenus("en", addCode);
+                statusMsg = lp.get(1);
+                addName=""; addCode=""; addEnc=""; addSheet=""; copyExist = "checked"; addFileEnc = "";
+                languagedao.initializeLanguages();
+                servicemenudao.initializeServiceMenus();
+            }
+
+        }
+        else { statusMsg += "<br>" + lp.get(6); }
+
+    }
+    catch (UnsupportedEncodingException e) { statusMsg += "<br>" + lp.get(7) + addEnc + lp.get(8); }
+}
+else if (!aReq.get("delete").equals("")) {
+    delMenus = aReq.get("delMenus");
+
+    Enumeration e = request.getParameterNames();
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("del_")) {
+            System.out.println(elem.substring(elem.lastIndexOf("_")+1));
+
+            if (languagedao.deleteItem(elem.substring(elem.lastIndexOf("_")+1))==0) {
+                if (!delMenus.equals("")) {
+                    delMenus = "checked";
+                    servicemenudao.deleteByLanguage(elem.substring(4, elem.lastIndexOf("_")));
+                }
+            }
+        }
+    }
+    languagedao.initializeLanguages();
+    servicemenudao.initializeServiceMenus();
+}
+
+java.util.List<SdcLanguage> list = umesdc.getLanguageList();
+
+%>

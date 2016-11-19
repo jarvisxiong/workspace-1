@@ -1,0 +1,195 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "header";
+//***************************************************************************************************
+
+String dm = Misc.getCookie("_MXMDOMAINUNIQUE", request);
+if (dm.equals("")) { out.println("domain missing"); return; }
+
+String imageDir = System.getProperty("contenturl")+"/www/images/wap/";
+String imgFormat = "gif";
+String sqlstr = "";
+String statusMsg ="";
+String[] props = null;
+Query query=null;
+
+java.util.List list = new ArrayList();
+
+String itype = aReq.get("imgtype");
+String updpic = Misc.hex8Decode(aReq.get("updpic"));
+String unique = aReq.get("unq");
+String res1 = aReq.get("resample1");
+String res2 = aReq.get("resample2");
+String res3 = aReq.get("resample3");
+String res4 = aReq.get("resample4");
+
+String pic = aReq.get("pic");
+String delpic = aReq.get("delpic");
+
+InitCmsParameters initcmsparam=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+initcmsparam=(InitCmsParameters) ac.getBean("cmsparameters");
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+ Transaction trans=dbsession.beginTransaction();
+if (!aReq.get("reload").equals("")) initcmsparam.reloadXhtmlImages();
+
+if (!delpic.equals("")) {
+    
+    File ff = new File(imageDir + Misc.hex8Decode(delpic));
+    System.out.println("ff: " + ff + ": " + ff.exists());
+    if (ff.exists() && !ff.isDirectory()) ff.delete();
+    sqlstr = "UPDATE xhtmlImages SET aImage='',aWidth='0',aHeight='0' WHERE aUnique='" + pic + "'";
+   
+    query=dbsession.createSQLQuery(sqlstr);
+    int stat=query.executeUpdate();
+   
+}
+
+if (!res1.equals("") || !res2.equals("") || !res3.equals("") || !res4.equals("")) {
+     
+    String src = "";
+    String prm = "";
+    if (!res1.equals("")) { src = aReq.get("re1src"); prm = "header1"; }
+    else if (!res2.equals("")) { src = aReq.get("re2src"); prm = "footer1"; }
+    else if (!res3.equals("")) { src = aReq.get("re3src"); prm = "header2"; }
+    else if (!res4.equals("")) { src = aReq.get("re4src"); prm = "footer2"; }
+             
+    String newimg = "";
+    BufferedImage orgImg = null;
+    BufferedImage srcimg = ImageIO.read(new File(imageDir + src));
+
+ 
+    
+    for (int i=4; i>0; i--) {
+        newimg = Misc.generateUniqueId() + "." + imgFormat;
+        System.out.println("resampling: " + newimg);
+        ImageResize.resample(srcimg, imageDir + newimg, (((Integer[])SdkTempCache.xhtmlProfiles.get(i-1))[3]).intValue(), -1);    
+        System.out.println(i + ": " + new File(imageDir + newimg));
+        orgImg = ImageIO.read(new File(imageDir + newimg));
+        int iw = orgImg.getWidth(null);
+        int ih = orgImg.getHeight(null);
+
+        sqlstr = "UPDATE xhtmlImages SET aImage='" + newimg + "', aWidth='" + iw + "',aHeight='" + ih + "' WHERE aType='" + prm + "' AND aProfile='" + i + "'"
+                + " AND aDomain='" + dm + "'";
+        System.out.println(sqlstr);
+        query=dbsession.createSQLQuery(sqlstr);
+        int stat=query.executeUpdate();
+    }
+
+}
+
+if (!updpic.equals("")) {
+    
+    System.out.println("updating image: " + imageDir + "source/" + updpic);
+        
+    BufferedImage orgImg = ImageIO.read(new File(imageDir + "source/" + updpic));
+    int iw = orgImg.getWidth(null);
+    int ih = orgImg.getHeight(null);
+    
+    String newimg = Misc.generateUniqueId() + "." + imgFormat;
+    
+    if (updpic.toLowerCase().endsWith("." + imgFormat)) { FileUtil.copyFile(imageDir + "source/" + updpic, imageDir + newimg); }
+    //else if (updpic.toLowerCase().endsWith(".jpg")) { newimg += ".jpg"; FileUtil.copyFile(imageDir + "source/" + updpic, imageDir + newimg); }
+    else { 
+        System.out.println("Resampling from original.");
+        ImageResize.resample(orgImg, imageDir + newimg, iw, ih);
+    }       
+    
+    sqlstr = "UPDATE xhtmlImages SET aImage='" + newimg + "', aWidth='" + iw + "', aHeight='" + ih + "' WHERE aUnique='" + unique + "'";
+   
+    query=dbsession.createSQLQuery(sqlstr);
+    int stat=query.executeUpdate();
+   
+    
+}
+
+
+if (!dm.equals("")) {  
+    
+    String[] ff = {"header1","footer1","header2","footer2"};
+    
+    
+    
+    for (int g=0; g<ff.length; g++) {
+        
+    
+        for (int i=4; i>0; i--) {        
+            props = new String[7];
+            for (int k=0; k<props.length; k++) props[k] = "";
+
+            sqlstr = "SELECT * FROM xhtmlImages WHERE aType='" + ff[g] + "' AND aDomain='" + dm + "' AND aProfile='" + i + "'";
+            query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aDomain").addScalar("aType").addScalar("aProfile")
+                    .addScalar("aImage").addScalar("aWidth").addScalar("aHeight");
+            
+            java.util.List result=query.list();
+            if(result.size()>0)
+             { 
+             for(Object o:result){
+                 Object[] row=(Object[]) o;
+                props[0] = String.valueOf(row[0]);
+                props[1] = String.valueOf(row[1]);
+                props[2] = String.valueOf(row[2]);
+                props[3] = String.valueOf(row[3]);
+                props[4] = String.valueOf(row[4]); 
+                props[5] = String.valueOf(row[5]);
+                props[6] = String.valueOf(row[6]);
+                list.add(props);
+                }
+            }
+            else {
+                props[0] = Misc.generateUniqueId();
+                props[1] = dm;
+                props[2] = ff[g];
+                props[3] = "" + i;
+                sqlstr = "INSERT INTO xhtmlImages VALUES('" + props[0] + "','" + props[1] + "','" + props[2] + "'"
+                        + ",'" + props[3] + "','','0','0')";
+                System.out.println(sqlstr); 
+                query=dbsession.createSQLQuery(sqlstr);
+                int stat=query.executeUpdate();
+                list.add(props);
+            }
+                
+        }
+    }
+    
+    
+}
+
+java.util.List dms = new ArrayList();
+sqlstr = "SELECT domains.aDomainUnique,aName,aDefaultUrl,aClientUnique FROM domains INNER JOIN clientDomains ON clientDomains.aDomainUnique=domains.aDomainUnique "
+        + " WHERE domains.aDomainUnique!='fjq32V44EqwaKUb' AND aActive='1'";
+
+ query=dbsession.createSQLQuery(sqlstr).addScalar("aDomainUnique").addScalar("aName");
+ java.util.List result=query.list();
+for(Object o:result) {
+    Object[] row=(Object[]) o;
+    props = new String[2];
+    props[0] = String.valueOf(row[0]);
+    props[1] = String.valueOf(row[1]);
+    dms.add(props);
+}
+
+
+
+trans.commit();
+dbsession.close();
+%>

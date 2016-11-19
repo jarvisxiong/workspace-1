@@ -1,0 +1,103 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "iso-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "index";
+//***************************************************************************************************
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+
+String statusMsg = "";
+ItemCategoryDao itemcategorydao=null;
+
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+      
+          itemcategorydao=(ItemCategoryDao) ac.getBean("itemcategorydao");
+	  
+     }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+
+String sqlstr = "";
+java.util.List list = new ArrayList();
+java.util.List sublist = null;
+ItemCategory cat = null;
+ItemCategory subcat = null;
+
+String add = aReq.get("add");
+String itype = aReq.get("itype");
+String addName = aReq.get("addname").toUpperCase();
+String parent = aReq.get("parent", "root");
+String delete = aReq.get("delete");
+String showSubs = aReq.get("shwsubs", "0");
+
+if (!add.equals("")) {
+    
+    if (addName.equals("")) { statusMsg = "Category name is missing."; }
+    else if (itype.equals("")) { statusMsg = "Select item type."; }
+    else {
+        sqlstr = "INSERT INTO itemCategories VALUES ("
+                + "'" + Misc.generateUniqueId() + "'"
+                + ",'" + Misc.encodeForDb(addName) + "','','','','" + parent + "','100'"
+                + ",'" + MiscDate.now24sql() + "','" + itype + "','')";
+        query=dbsession.createSQLQuery(sqlstr);
+        query.executeUpdate();
+        addName = "";
+        statusMsg = "Category added.";            
+    }
+    UmeTempCmsCache.itemCategoryMap = itemcategorydao.getCategoryMap();
+}
+else if (!delete.equals("")) {
+    Enumeration e = request.getParameterNames();
+    String delStr = "";
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("del") && elem.indexOf("_") > -1) {
+            if (!delStr.equals("")) delStr += " OR ";
+            delStr += "aUnique='" + elem.substring(elem.indexOf("_")+1) + "'";
+        }
+    }
+    if (!delStr.equals("")) {
+        sqlstr = "DELETE FROM itemCategories WHERE " + delStr;
+         query=dbsession.createSQLQuery(sqlstr);
+        query.executeUpdate();
+        if (delStr.indexOf("OR")>-1) statusMsg = "Categories deleted.";
+        else statusMsg = "Category deleted.";
+    }
+    UmeTempCmsCache.itemCategoryMap =itemcategorydao.getCategoryMap();
+}
+
+
+
+if (!itype.equals("")) {
+    list = itemcategorydao.getCategories(itype);
+}
+
+trans.commit();
+dbsession.close();
+
+String waplink = "";
+if (itype.equals("java")) waplink = "games.jsp?cat=";
+else if (itype.equals("bgimage")) waplink = "bgs.jsp?cat=";
+else if (itype.equals("mastertone")) waplink = "mtones.jsp?cat=";
+else if (itype.equals("truetone")) waplink = "mtones.jsp?type=4&cat=";
+else if (itype.equals("funtone")) waplink = "mtones.jsp?type=5&cat=";
+else if (itype.equals("ringtone")) waplink = "ptones.jsp?cat=";
+else if (itype.equals("gifanim")) waplink = "anims.jsp?cat=";
+else if (itype.equals("video")) waplink = "videos.jsp?cat=";
+
+%>

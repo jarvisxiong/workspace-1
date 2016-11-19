@@ -1,0 +1,704 @@
+<%@page import="org.jdom.input.SAXBuilder"%>
+<%@page import="org.jdom.Namespace"%>
+<%@page import="org.jdom.Element"%>
+<%@page import="org.jdom.Document"%>
+
+
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "iso-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "addnewgame";
+//***************************************************************************************************
+
+String wwwroot = System.getProperty("document_root");
+SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+String statusMsg = "";
+String statusMsg2 = "";
+String sqlstr = "";
+String name = "";
+String hexName = "";
+String imgFormat = "gif";
+
+String unique = "";
+String fileType = aReq.get("ftype", "game");
+
+String hexrootdir = aReq.get("rootdir");
+String profFile = aReq.get("proffile");
+String parse = aReq.get("parse");
+String rootdir = Misc.hex8Decode(hexrootdir);
+
+String uploadDir = System.getProperty("installDir") + "/data/upload";
+File checkdir = new File(uploadDir);
+if (!checkdir.exists() || !checkdir.isDirectory()) uploadDir = "/var/upload";
+File upDir = new File(uploadDir);
+File[] uparray = upDir.listFiles();
+java.util.List upFiles = Arrays.asList(uparray);
+Collections.sort(upFiles);
+
+if (rootdir.endsWith("/")) rootdir = rootdir.substring(0,rootdir.length()-1);
+
+java.util.List list = null;
+Element elem = null;
+Namespace xmlns = null;
+boolean gameadded = false;
+String tag = "";
+String tag2 = "";
+    
+HashMap phonesAdded = new HashMap();
+java.util.List updatedFiles = new ArrayList();
+java.util.List phonesNotFound = new ArrayList();
+java.util.List jarsNotFound = new ArrayList();
+java.util.List versionUpdates = new ArrayList();
+
+File file = null;
+
+java.util.List allfiles = null;
+if (!rootdir.equals("")) {    
+    allfiles = FileUtil.getFileListing(new File(rootdir));
+}
+
+if (!statusMsg.equals("")) {}
+else if (!parse.equals("") && profFile.equals("")) statusMsg = "Please select XML Profile file.";
+else if (!parse.equals("") && !profFile.equals("")) {    
+    
+    System.out.println("prof: " + profFile);
+    
+    String xml = FileUtil.loadFile(Misc.hex8Decode(profFile)).toString().trim();  
+    //System.out.println(xml);
+    
+    if (!xml.equals("")) {
+        
+        String provider = "";
+        String xmlVersion = "";
+        int xmlVersionInt = 0;
+        String xmlDate = "";
+        String xmlTime = "";
+        String defTitle = "";
+        Date xmlCreated = null;
+        
+        if (xml.indexOf("<?xml")>-1) xml = xml.substring(xml.indexOf("<?xml"));        
+        SAXBuilder builder = new SAXBuilder(false);
+        builder.setFeature( "http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        Document doc = builder.build(new StringReader(xml));
+        elem = doc.getRootElement();
+        xmlns = elem.getNamespace();
+
+        list  = elem.getChildren();
+        for (int i=0; i<list.size(); i++) {
+            elem = (Element) list.get(i); 
+            tag = elem.getName().toLowerCase();
+            if (tag.equals("provider-id")) provider = elem.getTextTrim();
+            else if (tag.equals("xml-version")) xmlVersion = elem.getTextTrim();
+            else if (tag.equals("xml-created-date")) xmlDate = elem.getTextTrim();
+            else if (tag.equals("xml-created-time")) xmlTime = elem.getTextTrim();
+            else if (tag.equals("default-title")) defTitle = elem.getTextTrim();
+        }
+        
+        if (provider.equals("")) statusMsg2 += "Provider ID is missing<br>";
+        if (xmlVersion.equals("")) statusMsg2 += "XML version is missing<br>";
+        if (xmlDate.equals("")) statusMsg2 += "XML date is missing<br>";
+        if (xmlTime.equals("")) statusMsg2 += "XML time is missing<br>";
+        if (defTitle.equals("")) statusMsg2 += "Default title is missing<br>";
+        
+        try { xmlVersionInt = Integer.parseInt(xmlVersion); }
+        catch (NumberFormatException e) { statusMsg2 += "XML version format error<br>"; }
+        
+        try { xmlCreated = sdf.parse(xmlDate + " " + xmlTime); }
+        catch (ParseException e) { statusMsg2 += "XML date and time format error<br>"; }
+                
+        if (statusMsg2.equals("")) {
+            
+            sqlstr = "SELECT * FROM javaGames WHERE aOwner='" + provider + "' AND aTitle='" + Misc.encodeForDb(defTitle) + "'";
+            query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aXmlVersion").addScalar("aXmlCreated");
+            java.util.List result=query.list();
+            if (result.size()>0) {
+                for(Object o:result) {
+                    
+                Object[] row=(Object[]) o;
+                
+                unique = String.valueOf(row[0]);
+                int dbXmlVersion = Integer.parseInt(String.valueOf(row[1]));
+                Date dbXmlCreated = MiscDate.parseSqlDateString(String.valueOf(row[2]));
+                if (dbXmlCreated!=null && dbXmlCreated.after(xmlCreated)) {
+                    statusMsg2 += "Newer XML file already exists: " + sdf.format(dbXmlCreated) + "<br>";
+                }
+                if (dbXmlVersion>xmlVersionInt) {
+                    statusMsg2 += "Newer XML version already exists: " + dbXmlVersion + "<br>";
+                }
+            }
+            }
+          
+            
+            if (statusMsg2.equals("")) {
+                if (unique.equals("")) {
+                    unique = Misc.generateUniqueId();
+                           
+                    sqlstr = "INSERT INTO javaGames VALUES('" + unique + "','" + Misc.encodeForDb(defTitle) + "','','','','','',''"
+                            + ",'" + xmlVersion + "','" + xmlDate + " " + xmlTime + "','','','1','1','0',''"
+                            + ",'" + MiscDate.now24sql() + "','" + MiscDate.now24sql() + "'"
+                            + ",'" + provider + "','','0')";
+                    System.out.println(sqlstr);                          
+                }
+                else {
+                    sqlstr = "UPDATE javaGames SET aXmlVersion='" + xmlVersion + "', aXmlCreated='" + xmlDate + " " + xmlTime + "'"
+                            + " WHERE aUnique='" + unique + "'";
+                    System.out.println(sqlstr); 
+                }
+                query=dbsession.createSQLQuery(sqlstr);
+                query.executeUpdate();                
+                gameadded = true;
+            }
+        }
+                
+    }
+}
+    
+if (gameadded) {  
+    
+    String dataDir = System.getProperty("installDir") + "/data/javagames/" + unique + "_" + fileType;
+    File tmp = new File(dataDir);
+    if (!tmp.exists()) tmp.mkdirs();
+    
+    Map phoneMap = new HashMap();
+    Map updatedPhones = new HashMap();
+    
+              
+    for (int i=0; i<list.size(); i++) {
+        elem = (Element) list.get(i);
+        tag = elem.getName().toLowerCase();
+        
+        java.util.List gameFileList = null;        
+        java.util.List marketingList = null;
+                        
+        if (tag.equals("game-file")) {
+            gameFileList = elem.getChildren();
+            
+            java.util.List phoneList = null;
+            java.util.List langList = new ArrayList();
+            java.util.List tempList = null;
+            String jarFile = "";
+            String fileDir = "";
+            String fileVersion = "";
+            int fileVersionInt = 0;
+            boolean fileExists = false;
+            String jadPath = "";
+            
+            for (int k=0; k<gameFileList.size(); k++) {
+                elem = (Element) gameFileList.get(k);
+                tag = elem.getName().toLowerCase();
+                
+                if (tag.equals("file-name")) jarFile = elem.getTextTrim();
+                else if (tag.equals("file-dir")) fileDir = elem.getTextTrim();
+                else if (tag.equals("version")) fileVersion = elem.getTextTrim();
+                else if (tag.equals("languages")) {
+                    tempList = elem.getChildren();
+                    for (int p=0; p<tempList.size(); p++) {
+                        elem = (Element) tempList.get(p);
+                        tag = elem.getName().toLowerCase();
+                        if (tag.equals("language")) langList.add(elem.getTextTrim().toLowerCase());
+                    }
+                }
+                else if (tag.equals("phones")) phoneList = elem.getChildren();
+            }    
+            
+            if (jarFile.equals("") || fileDir.equals("") || fileVersion.equals("") || langList.size()==0 || phoneList.size()==0) {
+                System.out.println("Game-file error, filename: " + jarFile + ", dir: " + fileDir + ", version: " + fileVersion
+                                    + ", lang: " + langList.size() + ", phones: " + phoneList.size()); 
+                continue;
+            }     
+                        
+            try { fileVersionInt = Integer.parseInt(fileVersion); } catch (NumberFormatException e) {}
+            
+            File srcjar = new File(rootdir + "/" + fileDir + "/" + jarFile + ".jar");
+            File srcjad = new File(rootdir + "/" + fileDir + "/" + jarFile + ".jad");
+            
+            //System.out.println(rootdir + "/" + fileDir + "/" + jarFile + ".jar");
+            
+            if (!srcjar.exists()) srcjar = new File(rootdir + "/" + fileDir.toLowerCase() + "/" + jarFile.toLowerCase() + ".jar");
+            if (!srcjad.exists()) srcjad = new File(rootdir + "/" + fileDir.toLowerCase() + "/" + jarFile.toLowerCase() + ".jad");
+            
+            //System.out.println(rootdir + "/" + fileDir.toLowerCase() + "/" + jarFile.toLowerCase() + ".jar");
+            
+            if (!srcjar.exists() || !srcjad.exists()) {
+                System.out.println("Jad/Jar missing: " + srcjar);
+                jarsNotFound.add(fileDir + "/" + jarFile);
+                continue;
+            }
+            
+            jadPath = Misc.makeSqlSafe(srcjad.getName());
+            
+            File oldjar = new File(dataDir + "/" + srcjar.getName());
+            File oldjad = new File(dataDir + "/" + srcjad.getName());
+            if (oldjar.exists() && oldjad.exists()) fileExists = true;
+            
+            for (int k=0; k<phoneList.size(); k++) {
+                elem = (Element) phoneList.get(k);
+                tag = elem.getName().toLowerCase();
+                
+                String manu = "";
+                String model = "";
+                String model2 = "";
+                String phoneUnique = "";
+                
+                if (tag.equals("phone")) {
+                    manu = elem.getAttribute("manufacturer").getValue();
+                    model = elem.getAttribute("model").getValue();  
+                    
+                    if (manu==null || model==null || manu.equals("") || model.equals("")) { 
+                        System.out.println("Phone-tag ERROR, manu: " + manu + ", model: " + model); 
+                        continue; 
+                    }
+                    //manu = manu.toLowerCase();
+                    manu = Misc.replaceChars(manu, " ", "");
+                                                          
+                    //model = model.toLowerCase();                    
+                    //model = Misc.replaceChars(model, " ", "");
+                    model2 = Misc.replaceChars(model, "-", "");
+                    /*
+                    if (manu.equals("sonyericsson")) model = Misc.replaceChars(model, "i", "");
+                    if (manu.equals("samsung")) {
+                        model = Misc.replaceChars(model, "sgh", "");
+                        if (model.endsWith("v")) model = model.substring(0, model.length()-1);
+                    } 
+                    */
+                    phoneUnique = (String) phoneMap.get(manu + "_" + model);
+                
+                    if (phoneUnique==null) {
+                        phoneUnique = "notfound";  
+                        
+                        if (manu.equalsIgnoreCase("samsung") || manu.equalsIgnoreCase("sharp")) {                                                    
+                            sqlstr = "SELECT * FROM handsets WHERE aManufacturer='" + manu + "'"
+                                    + " AND (aModel LIKE '%" + model + "' OR aModel LIKE '%" + model2 + "')";
+                        }
+                        else {
+                            sqlstr = "SELECT * FROM handsets WHERE aManufacturer='" + manu + "'"
+                                  + " AND (aModel='" + model + "' OR aModel='" + model2 + "')";
+                            if (model.indexOf("gage")>-1) System.out.println(sqlstr);
+                        }
+                        
+                        query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique");
+                        java.util.List result1=query.list();
+                        if(result1.size()>0){
+                            for(Object o1:result1)
+                            {
+                                String phoneunq=o1.toString();
+                                phoneUnique = phoneunq;
+                            }
+                        }
+                     
+                        if (phoneUnique.equals("notfound")) { 
+                            //System.out.println("PHONE NOT FOUND: " + manu + " " + model); 
+                            phonesNotFound.add(manu + " " + model); 
+                        }     
+                        phoneMap.put(manu.toLowerCase() + "_" + model.toLowerCase(), phoneUnique);
+                    }
+                    if (phoneUnique.equals("notfound")) continue;
+                    
+                                           
+                    for (int t=0; t<langList.size(); t++) {                           
+                        
+                        if (updatedPhones.get(phoneUnique + "_" + langList.get(t))!=null) { System.out.println("Phone already updated"); continue; }
+                    
+                        sqlstr = "SELECT aUnique,aJadFile,aLangCode,aVersion FROM supportedPhones WHERE aJavaUnique='" + unique + "' AND aPhoneUnique='" + phoneUnique + "'"
+                                + " AND aFileType='" + fileType + "' AND aLangCode='" + langList.get(t) + "'";
+                        
+                        query=dbsession.createSQLQuery(sqlstr).addScalar("aVersion").addScalar("aUnique");
+                        java.util.List result2=query.list();
+                        if (result2.size()<=0) {
+                            java.util.List pList = (java.util.List) phonesAdded.get(srcjad.getName());
+                            if (pList==null) {
+                                pList = new ArrayList();
+                                pList.add(manu + " " + model + " (" + langList.get(t) + ")");
+                            }
+                            else pList.add(manu + " " + model + " (" + langList.get(t) + ")");                                             
+                            phonesAdded.put(srcjad.getName(), pList);   
+
+                            sqlstr = "INSERT INTO supportedPhones VALUES('" + Misc.generateUniqueId() + "','" + unique + "'"
+                                     + ",'" + phoneUnique + "','" + jadPath + "','" + langList.get(t) +"','','" + fileType + "'"
+                                     + ",'1','" + MiscDate.now24sql() + "','" + fileVersionInt + "')";
+                            //System.out.println(sqlstr);
+                            query=dbsession.createSQLQuery(sqlstr);
+                            query.executeUpdate();
+
+                        }
+                        else {
+                            int v=-1;String gameunique="";
+                            for(Object o2:result2){
+                                Object [] row2=(Object[]) o2;
+                                
+                                v=Integer.parseInt(String.valueOf(row2[0]));
+                                gameunique=String.valueOf(row2[1]);
+                            }
+                            if (fileVersionInt>v) {
+                                sqlstr = "UPDATE supportedPhones SET aJadFile='" + jadPath + "',aVersion='" + fileVersionInt + "'"
+                                        + " WHERE aUnique='" + gameunique + "'";
+                                 query=dbsession.createSQLQuery(sqlstr);
+                                 query.executeUpdate();
+                                versionUpdates.add(srcjad.getName() + ":  New Version: " + fileVersionInt);
+                            }
+                        }
+                                               
+                        updatedPhones.put(phoneUnique + "_" + langList.get(t), "1");
+                        
+                        if (!fileExists) {
+                            //System.out.println("copying: " + srcjar.getName());
+                            FileUtil.copyFile(srcjar.getPath(), dataDir + "/" + srcjar.getName());  
+                            FileUtil.copyFile(srcjad.getPath(), dataDir + "/" + srcjad.getName());  
+                            updatedFiles.add("/" + srcjad.getName());
+                        }
+                        else {
+                            //System.out.println("File exists: " + srcjad.getName());
+                        }
+                    }    
+                }
+                
+            }
+        }
+        else if (tag.equals("marketing")) {
+            marketingList = elem.getChildren();
+            
+            java.util.List ls = null;
+            java.util.List ls2 = null;
+            File ff = null;
+            Map hh = new HashMap();
+            Map ht = new HashMap();
+            Map cats = new HashMap();
+            
+            sqlstr = "SELECT * FROM xhtmlProfiles";
+            query=dbsession.createSQLQuery(sqlstr).addScalar("aProfile").addScalar("aScreenshot").addScalar("aThumbnail");
+            java.util.List result3=query.list();
+            for(Object o3:result3) {
+                Object[] row3=(Object[]) o3;
+                hh.put(String.valueOf(row3[0]), String.valueOf(row3[1]));
+                ht.put(String.valueOf(row3[0]), String.valueOf(row3[2]));
+            }
+                    
+            sqlstr = "SELECT * FROM itemCategories WHERE aContentType='java'";
+            query=dbsession.createSQLQuery(sqlstr).addScalar("aName1").addScalar("aUnique");
+            java.util.List result4=query.list();
+            
+            for(Object o4:result4) {
+                Object[] row4=(Object[]) o4;
+                cats.put(Misc.utfToUnicode(String.valueOf(row4[0]), pageEnc).toLowerCase(),String.valueOf(row4[1]));
+            }
+                      
+                        
+            for (int p=0; p<marketingList.size(); p++) {
+                elem = (Element) marketingList.get(p);
+                tag = elem.getName().toLowerCase();
+                
+                if (tag.equals("titles")) {
+                    ls = elem.getChildren();                                                            
+                    for (int k=0; k<ls.size(); k++) {
+                        elem = (Element) ls.get(k);
+                        tag = elem.getName().toLowerCase();
+                        
+                        String titleLang = "";
+                        String titlestr = "";
+                        
+                        if (tag.equals("title")) {
+                            try { titleLang = elem.getAttribute("lang").getValue().toLowerCase(); }
+                            catch (NullPointerException e) {}
+                            
+                            ls2 = elem.getChildren(); 
+                            for (int t=0; t<ls2.size(); t++) {
+                                elem = (Element) ls2.get(t);
+                                tag = elem.getName().toLowerCase();                                 
+                                if (tag.equals("txt")) titlestr = Misc.encodeForDb(elem.getTextTrim());                       
+                            }
+                            
+                            if (titleLang.equals("") || titlestr.equals("")) { System.out.println("Title-tag error"); continue; }
+                            
+                            sqlstr = "UPDATE itemDescriptions SET aTitle='" + titlestr + "'"
+                                    + " WHERE aItemUnique='" + unique + "' AND aLangCode='" + titleLang + "'";
+                            query=dbsession.createSQLQuery(sqlstr);
+                                
+                            int cc = query.executeUpdate();
+                            if (cc==0) {
+                                sqlstr = "INSERT INTO itemDescriptions VALUES('" + Misc.generateUniqueId() + "','" + unique + "','desc','" + titlestr + "'"
+                                        + ",'','','','','','" + titleLang + "','" + MiscDate.now24sql() + "')";
+                               query=dbsession.createSQLQuery(sqlstr);
+                               query.executeUpdate();
+                            }
+                        }
+                    }  
+                }
+                else if (tag.equals("descriptions")) {
+                    ls = elem.getChildren();                                                            
+                    for (int k=0; k<ls.size(); k++) {
+                        elem = (Element) ls.get(k);
+                        tag = elem.getName().toLowerCase();
+                        
+                        String descLang = "";
+                        String punch = "";
+                        String shortdesc = "";
+                        String longdesc = "";
+                        String verylong = "";
+                                                
+                        if (tag.equals("description")) {
+                            try { descLang = elem.getAttribute("lang").getValue().toLowerCase(); }
+                            catch (NullPointerException e) {}
+                            
+                            ls2 = elem.getChildren(); 
+                            for (int t=0; t<ls2.size(); t++) {
+                                elem = (Element) ls2.get(t);
+                                tag = elem.getName().toLowerCase();                                 
+                                if (tag.equals("punch-line")) punch = Misc.encodeForDb(elem.getTextTrim());                       
+                                if (tag.equals("short")) shortdesc = Misc.encodeForDb(elem.getTextTrim());
+                                if (tag.equals("long")) longdesc = Misc.encodeForDb(elem.getTextTrim());
+                                if (tag.equals("very-long")) verylong = Misc.encodeForDb(elem.getTextTrim());
+                            }
+                            
+                            if (descLang.equals("")) { System.out.println("Title-tag error"); continue; }
+                            
+                            sqlstr = "UPDATE itemDescriptions SET aPunch='" + punch + "',aShort='" + shortdesc + "',aLong='" + longdesc + "',aVeryLong='" + verylong + "'"
+                                    + " WHERE aItemUnique='" + unique + "' AND aLangCode='" + descLang + "'";
+                            query=dbsession.createSQLQuery(sqlstr);
+                            
+                            int cc = query.executeUpdate();
+                            if (cc==0) {
+                                sqlstr = "INSERT INTO itemDescriptions VALUES('" + Misc.generateUniqueId() + "','" + unique + "','desc',''"
+                                        + ",'" + punch + "','" + shortdesc + "','" + longdesc + "','" + verylong + "','','" + descLang + "','" + MiscDate.now24sql() + "')";
+                                query=dbsession.createSQLQuery(sqlstr);
+                                query.executeUpdate();
+                            }                         
+                        }   
+                    }
+                }
+                else if (tag.equals("categories")) {
+                    ls = elem.getChildren();                                                            
+                    
+                    String cat = "";  
+                    String catstr = "";
+                    
+                    for (int k=0; k<ls.size(); k++) {
+                        elem = (Element) ls.get(k);
+                        tag = elem.getName().toLowerCase();
+                                                
+                        if (tag.equals("category")) {      
+                            cat = (String) cats.get(elem.getTextTrim().toLowerCase());
+                            if (cat!=null && !cat.equals("")) {
+                                if (catstr.length()>0) catstr += "?";
+                                catstr += cat;
+                            }                            
+                        }
+                    }
+                    
+                    if (!catstr.equals("")) {
+                        sqlstr = "UPDATE javaGames SET aCategory='" + catstr + "' WHERE aUnique='" + unique + "'";
+                        query=dbsession.createSQLQuery(sqlstr);
+                        query.executeUpdate();
+                    }
+                }
+                else if (tag.equals("keywords")) {
+                    ls = elem.getChildren();                                                            
+                    
+                    String kw = "";  
+                    String kwstr = "";
+                    
+                    for (int k=0; k<ls.size(); k++) {
+                        elem = (Element) ls.get(k);
+                        tag = elem.getName().toLowerCase();
+                                                
+                        if (tag.equals("keyword")) {      
+                            kw = elem.getTextTrim().toLowerCase();                                                       
+                            if (kw!=null && !kw.equals("")) {
+                                kw = Misc.replaceChars(kw, " ", ",");
+                                if (kwstr.length()>0) kwstr += ",";
+                                kwstr += kw;                                
+                            }                            
+                        }
+                    }
+                    
+                    if (!kwstr.equals("")) {
+                        sqlstr = "UPDATE javaGames SET aKeywords='" + Misc.encodeForDb(kwstr) + "' WHERE aUnique='" + unique + "'";
+                        query=dbsession.createSQLQuery(sqlstr);
+                        query.executeUpdate();
+                    }
+                }
+                else if (tag.equals("images")) {
+                    ls = elem.getChildren();
+                    
+                    // Delete old images
+                    sqlstr = "SELECT * FROM itemImages WHERE aItemUnique='" + unique + "'";
+                    query=dbsession.createSQLQuery(sqlstr).addScalar("aPath");                    
+                    java.util.List result5=query.list();
+                    
+                    for(Object o5:result5) {
+                        String path=o5.toString();
+                        ff = new File(wwwroot + path);
+                        if (ff.exists() && !ff.isDirectory()) ff.delete();
+                    }
+                    sqlstr = "DELETE FROM itemImages WHERE aItemUnique='" + unique + "'";
+                    query=dbsession.createSQLQuery(sqlstr);
+                    query.executeUpdate();
+                    // Delete END
+                    
+                    for (int k=0; k<ls.size(); k++) {
+                        elem = (Element) ls.get(k);
+                        tag = elem.getName().toLowerCase();
+                        
+                        String index = "";
+                        String size = "";
+                        String fName = "";
+                        String fDir = "";
+                        
+                        ls2 = elem.getChildren(); 
+                        for (int t=0; t<ls2.size(); t++) {
+                            elem = (Element) ls2.get(t);
+                            tag2 = elem.getName().toLowerCase();                                 
+                            if (tag2.equals("index")) index = elem.getTextTrim();
+                            else if (tag2.equals("size")) size = elem.getTextTrim();
+                            else if (tag2.equals("file-name")) fName = elem.getTextTrim();
+                            else if (tag2.equals("file-dir")) fDir = elem.getTextTrim();                                
+                        }
+                        
+                        if (size.equals("") || fName.equals("") || fDir.equals("")) {
+                            System.out.println("Images-tag error"); continue;
+                        }
+                        
+                        File srcfile = new File(rootdir + "/" + fDir + "/" + fName);
+                        if (!srcfile.exists()) {
+                            System.out.println("Image not found: " + srcfile); continue;
+                        }
+                        
+                        BufferedImage srcimg = ImageIO.read(srcfile);
+                        BufferedImage newimg = null;
+                        int iw = srcimg.getWidth(null);
+                        int ih = srcimg.getHeight(null);
+                        
+                        if (tag.equals("icon")) {
+                            
+                            if (index.equals("")) { index = "0"; }  
+                            
+                            // Icon
+                            fName = Misc.generateUniqueId() + "." + imgFormat;
+                            ImageResize.resample(srcimg, wwwroot + "/images/javagames/" + fName, iw, -1);                        
+                            newimg = ImageIO.read(new File(wwwroot + "/images/javagames/" + fName));
+                            iw = newimg.getWidth(null);
+                            ih = newimg.getHeight(null);
+
+                            sqlstr = "INSERT INTO itemImages VALUES('" + Misc.generateUniqueId() + "','" + unique + "','webicon','" + index + "'"
+                                 + ",'" + Misc.makeSqlSafe("/images/javagames/" + fName) + "','" + MiscDate.now24sql() + "'"
+                                + ",'0','" + Misc.generateUniqueId() + "','" + iw + "','" + ih + "')";
+                            //System.out.println(sqlstr);
+                           query=dbsession.createSQLQuery(sqlstr);
+                            query.executeUpdate();
+                        
+                        }
+                        else if (tag.equals("image")) {
+                                                        
+                            if (index.equals("")) { System.out.println("Image-tag error"); continue; }                                                     
+
+                            // Web image
+                            fName = Misc.generateUniqueId() + "." + imgFormat;
+                            ImageResize.resample(srcimg, wwwroot + "/images/javagames/" + fName, iw, -1);                        
+                            newimg = ImageIO.read(new File(wwwroot + "/images/javagames/" + fName));
+                            iw = newimg.getWidth(null);
+                            ih = newimg.getHeight(null);
+
+                            sqlstr = "INSERT INTO itemImages VALUES('" + Misc.generateUniqueId() + "','" + unique + "','webimage','" + index + "'"
+                                 + ",'" + Misc.makeSqlSafe("/images/javagames/" + fName) + "','" + MiscDate.now24sql() + "'"
+                                + ",'0','" + Misc.generateUniqueId() + "','" + iw + "','" + ih + "')";
+                            //System.out.println(sqlstr);
+                            query=dbsession.createSQLQuery(sqlstr);
+                            query.executeUpdate();
+                            
+                            // wap images                            
+                            String imageGroup = Misc.generateUniqueId();                           
+                            
+                            for (int z=4; z>0; z--) {
+                    
+                                fName = Misc.generateUniqueId() + "." + imgFormat;
+                                ImageResize.resample(srcimg, wwwroot + "/images/javagames/" + fName, Integer.parseInt((String) hh.get("" + z)), -1);                        
+                                newimg = ImageIO.read(new File(wwwroot + "/images/javagames/" + fName));
+                                iw = newimg.getWidth(null);
+                                ih = newimg.getHeight(null);
+
+                                sqlstr = "INSERT INTO itemImages VALUES('" + Misc.generateUniqueId() + "','" + unique + "','mobimage','" + index + "'"
+                                     + ",'" + Misc.makeSqlSafe("/images/javagames/" + fName) + "','" + MiscDate.now24sql() + "'"
+                                    + ",'" + z + "','" + imageGroup + "','" + iw + "','" + ih + "')";
+                                //System.out.println(sqlstr);
+                                query=dbsession.createSQLQuery(sqlstr);
+                                query.executeUpdate();
+                            }   
+
+                            // promo images  
+                            if (index.equals("1")) {
+                                imageGroup = Misc.generateUniqueId();                           
+
+                                for (int z=4; z>0; z--) {
+
+                                    fName = Misc.generateUniqueId() + "." + imgFormat;
+                                    ImageResize.resample(srcimg, wwwroot + "/images/javagames/" + fName, Integer.parseInt((String) ht.get("" + z)), -1);                        
+                                    newimg = ImageIO.read(new File(wwwroot + "/images/javagames/" + fName));
+                                    iw = newimg.getWidth(null);
+                                    ih = newimg.getHeight(null);
+
+                                    sqlstr = "INSERT INTO itemImages VALUES('" + Misc.generateUniqueId() + "','" + unique + "','promoimage','" + index + "'"
+                                         + ",'" + Misc.makeSqlSafe("/images/javagames/" + fName) + "','" + MiscDate.now24sql() + "'"
+                                        + ",'" + z + "','" + imageGroup + "','" + iw + "','" + ih + "')";
+                                    //System.out.println(sqlstr);
+                                    query=dbsession.createSQLQuery(sqlstr);
+                                    query.executeUpdate();
+                                }
+                            }
+                        }
+                    } 
+                }
+                
+            }
+        }
+    
+    }
+    
+    File oDir = new File(dataDir);  
+
+    if (oDir.isDirectory()) {           
+        File[] fff = oDir.listFiles();
+        String fName = "";
+        File ff = null;
+
+        for (int i=0; i<fff.length; i++) {
+            fName = fff[i].getName();
+            if (fName.toLowerCase().endsWith(".jad")) {
+                sqlstr = "SELECT * FROM supportedPhones WHERE aJadFile='" + Misc.makeSqlSafe(fName) + "' AND aFileType='" + fileType + "'";             
+                //System.out.println(sqlstr);
+                query=dbsession.createSQLQuery(sqlstr);
+                java.util.List result6=query.list();
+                if (result6.size()<=0) {
+                    ff = new File(dataDir + "/" + fName);
+                    //System.out.println("deleting: " + ff);
+                    if (ff.exists() && !ff.isDirectory()) ff.delete();
+
+                    fName = fName.substring(0,fName.length()-4) + ".jar";
+                    ff = new File(dataDir + "/" + fName);
+                    if (ff.exists() && !ff.isDirectory()) ff.delete();       
+                }
+                
+            }
+        }            
+    }   
+    
+    //ServerParam.reloadJavaImages();
+    //ServerParam.reloadJavaDescriptions();
+}
+trans.commit();
+dbsession.close();
+%>

@@ -1,0 +1,157 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "modpromo4";
+//***************************************************************************************************
+
+String imgFormat = "gif";
+
+String client = aReq.get("clnt");
+String srvc = aReq.get("srvc");
+String cmd = aReq.get("cmd");
+String ss = aReq.get("ss");
+String updpic = Misc.hex8Decode(aReq.get("updpic"));
+String pic = aReq.get("pic");
+String regionid=aReq.get("regionid");
+
+String dm = Misc.getCookie("_MXMDOMAINUNIQUE", request);
+String subpage = Misc.getCookie("_MXMSUBPAGEUNIQUE", request);
+
+if (dm.equals("") || srvc.equals("") || cmd.equals("") || client.equals("")) { out.println("domain / service / cmd / client missing"); return; }
+
+Query query=null, query2=null;
+Transaction trans=dbsession.beginTransaction();
+String sqlstr = "";
+String statusMsg ="";
+String statusMsg2 = "";
+String[] props = null;
+String[] pprops = null;
+String[] gprops = null;
+String[] dprops = null;
+
+String promoUnique = "";
+String game = ""; 
+boolean resample = false;
+String srvcTitle = "";
+String domainName = ((UmeDomain) SdkTempCache.domainMap.get(dm)).getName();
+
+if (cmd.equals("hotvideo")) srvcTitle = "Hot Video";
+
+if (ss.equals("1")) { 
+    
+    Enumeration e = request.getParameterNames();
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("game_")) {
+            game = aReq.get(elem);
+            promoUnique = elem.substring(5);
+            sqlstr = "UPDATE clientPromoPages SET aJavaUnique='" + game + "',aIndex='" + aReq.get("ind_" + promoUnique) + "'"
+                    + " WHERE aPromoUnique='" + promoUnique + "'";
+            System.out.println(sqlstr);
+            query=dbsession.createSQLQuery(sqlstr);
+            int stat=query.executeUpdate();
+        }
+    }    
+}
+
+java.util.List items = new ArrayList();
+sqlstr = "SELECT * FROM videoClips INNER JOIN clientContent ON videoClips.aUnique=aItemUnique"
+        + " WHERE aItemStatus>'0' AND videoClips.aStatus>'0' AND aClientUnique='" + client + "'"
+        + " AND aContentType='video' ORDER BY aTitle";
+query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aTitle");
+java.util.List result=query.list();
+for(Object o:result) {
+    Object[] row=(Object[]) o;
+    gprops = new String[2];
+    gprops[0] = String.valueOf(row[0]);
+    gprops[1] = String.valueOf(row[1]);
+    items.add(gprops);
+}
+
+
+
+
+java.util.List list = new ArrayList();
+Hashtable pics = new Hashtable();
+
+if (!dm.equals("") && !srvc.equals("")) {
+    
+    sqlstr = "SELECT * FROM clientPromoPages WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "' ORDER BY aIndex";
+    System.out.println(sqlstr);
+    query=dbsession.createSQLQuery(sqlstr);
+    java.util.List res=query.list();
+    if (res.size()<=0) {
+        int k=0;
+        if (cmd.equals("hotgame")) k=5;
+        else if (cmd.equals("weekgame")) k=3;
+        else k=7;
+        for (int t=1; t<k; t++) {
+            sqlstr = "INSERT INTO clientPromoPages VALUES('" + Misc.generateUniqueId() + "','" + srvc + "','','" + t + "','" + MiscDate.now24sql() + "','" + dm + "')";
+            query=dbsession.createSQLQuery(sqlstr);
+             int stat=query.executeUpdate();
+        }        
+    }
+   
+                     
+    sqlstr = "SELECT * FROM clientPromoPages WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "' ORDER BY aIndex";
+    System.out.println(sqlstr);
+    query=dbsession.createSQLQuery(sqlstr).addScalar("aPromoUnique").addScalar("aJavaUnique").addScalar("aIndex");
+    java.util.List result1=query.list();
+    for(Object o1:result1) {
+        Object[] row1= (Object[]) o1;
+        props = new String[7];        
+        props[0] = String.valueOf(row1[0]);
+        props[1] = String.valueOf(row1[1]);
+        props[2] = String.valueOf(row1[2]); 
+        props[3] = "";
+        props[4] = "";
+        props[5] = "";
+        props[6] = "";
+        
+        int lowestIndex = -1;
+        sqlstr = "SELECT * FROM itemImages WHERE aItemUnique='" + props[1] + "' AND aType='mobthumb' ORDER BY aIndex LIMIT 0,1";
+        query=dbsession.createSQLQuery(sqlstr).addScalar("aIndex");
+        java.util.List result2=query.list();
+        if(result2.size()>0){
+            for(Object o2:result2){
+                int indexi=Integer.parseInt(o2.toString());
+                lowestIndex = indexi;
+            }
+        }
+       
+        
+        if (lowestIndex>-1) {
+            sqlstr = "SELECT * FROM itemImages WHERE aItemUnique='" + props[1] + "' AND aType='mobthumb' AND aIndex='" + lowestIndex + "'"
+                    + " ORDER BY aProfile";
+            query=dbsession.createSQLQuery(sqlstr).addScalar("aProfile").addScalar("aPath");
+            java.util.List result3=query.list();
+            for(Object o3:result3) {
+                Object[] row3=(Object[]) o3;
+                int profiler=Integer.parseInt(String.valueOf(row3[0]));
+                props[(2+profiler)] = String.valueOf(row3[1]);
+            }
+           
+        }
+
+        list.add(props);        
+    }
+    
+     
+}
+
+trans.commit();
+dbsession.close();
+%>

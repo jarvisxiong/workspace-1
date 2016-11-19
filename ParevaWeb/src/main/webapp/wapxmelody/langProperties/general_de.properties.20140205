@@ -1,0 +1,30 @@
+# GENERAL LANGUAGE FILE FOR GERMAN
+
+welcome=Willkommen
+credits=Deine Kreditpunkte
+order=Bestellen
+try=Probieren
+more=Mehr Info
+moregames=Weitere Spiele
+next=Nächste
+previous=Letzte
+back=Zurück
+start=Digital Chocolate - Start
+no_orders=Du musst zuerst einige Spiele gespielt haben, um sie bewerten zu können.
+save=Speichern
+morepics=Mehr Bilder
+submit=Abschicken
+up=Oben
+
+not_supp_title=Handy nicht unterstützt.
+not_supp=Leider wird dein Handytyp nicht unterstützt.
+
+bookmark=Bookmark
+bookmark_ok=Ein Bookmark wurde auf dein Handy geschickt. Du wirst es bald erhalten.
+bookmark_failed= Leider konnte ein Bookmark nicht auf dein Handy geschickt werden. Versuche es später noch mal.
+
+error=Fehler.
+not_found=Spiel nicht gefunden.
+authnerror=Bezahlvorgang unterbrochen. Versuche es später noch mal.
+
+terms=Teihnahmebedingungen.

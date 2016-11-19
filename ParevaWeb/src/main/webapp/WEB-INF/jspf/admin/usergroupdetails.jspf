@@ -1,0 +1,95 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeTempCache anyxsdc=null;
+UmeLanguagePropertyDao langpropdao=null;
+UmeUserGroupDao umeusergroupdao=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+anyxsdc=(UmeTempCache) ac.getBean("umesdc");
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+umeusergroupdao=(UmeUserGroupDao) ac.getBean("umeusergroupdao");
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+String ugid = aReq.get("ugid");
+UmeUserGroup group = anyxsdc.getUserGroupMap().get(ugid);
+if (group==null) return;
+
+UmeDomain dd = anyxsdc.getDomainMap().get(group.getDomain());
+
+String parentName = "";
+UmeUserGroup pgroup = anyxsdc.getUserGroupMap().get(group.getParent());
+if (pgroup!=null) parentName = pgroup.getName();
+else parentName = "Root";
+
+System.out.println("NAMES: " + anyxsdc.getUserGroupNames());
+
+String statusMsg="";
+String save = aReq.get("save");
+
+SdcPackage sdcpack = null;
+SdcPackage grpack = null;
+SdcService sdcservice = null;
+
+if (!save.equals("")) {
+
+    String name = aReq.get("aName");
+    if (name.equals("")) statusMsg = lp.get(5);
+    else {
+
+        String credits = aReq.get("aCredits");
+
+
+        group.setName(name);
+        group.setActive(Integer.parseInt(aReq.get("aActive", "0")));
+        group.setPriceGroup(Integer.parseInt(aReq.get("aPriceGroup", "0")));
+        if (!credits.equals("")) {
+            try { group.setCredits(Integer.parseInt(credits)); } catch (NumberFormatException e) {}
+        }
+        group.setDescription(aReq.get("aDescription"));
+        
+        group.getPackageList().clear();
+
+        Enumeration e = request.getParameterNames();
+
+        for (;e.hasMoreElements();) {
+            String elem = (String) e.nextElement();
+            if (elem.startsWith("pack_")) {
+                sdcpack = anyxsdc.getPackageMap().get(elem.substring(5));
+                if (sdcpack!=null) group.getPackageList().add(sdcpack);
+            }
+        }
+
+        umeusergroupdao.saveUserGroup(group);
+
+        statusMsg = lp.get(1);
+    }
+}
+
+
+int cs=4;
+String bgColor="#EEEEEE";
+%>

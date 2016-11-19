@@ -1,0 +1,131 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "ISO-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "modpromo3";
+//***************************************************************************************************
+
+String imageDir = System.getProperty("document_root") + "/images/javagames/promos/";
+String imgFormat = "gif";
+
+String client = aReq.get("clnt");
+String srvc = aReq.get("srvc");
+String cmd = aReq.get("cmd");
+String ss = aReq.get("ss");
+String updpic = Misc.hex8Decode(aReq.get("updpic"));
+String pic = aReq.get("pic");
+
+String dm = Misc.getCookie("_MXMDOMAINUNIQUE", request);
+String subpage = Misc.getCookie("_MXMSUBPAGEUNIQUE", request);
+
+if (dm.equals("") || srvc.equals("") || cmd.equals("") || client.equals("")) { out.println("domain / service / cmd / client missing"); return; }
+
+Query query=null, query2=null;
+Transaction trans=dbsession.beginTransaction();
+String sqlstr = "";
+String statusMsg ="";
+String statusMsg2 = "";
+String[] props = null;
+String[] pprops = null;
+String[] gprops = null;
+String[] dprops = null;
+
+String promoUnique = "";
+String game = ""; 
+boolean resample = false;
+String srvcTitle = "";
+String domainName = "";
+
+if (cmd.equals("hotbg")) srvcTitle = "Hot Wallpaper";
+
+Hashtable hh = new Hashtable();
+sqlstr = "SELECT * FROM xhtmlProfiles";
+query=dbsession.createSQLQuery(sqlstr).addScalar("aProfile").addScalar("aFullWidth");
+java.util.List result=query.list();
+for(Object o:result) {
+    Object[] row=(Object[]) o;
+    hh.put(String.valueOf(row[0]),String.valueOf(row[1]));
+}
+
+if (ss.equals("1")) { 
+         
+    Enumeration e = request.getParameterNames();
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("item_")) {
+            game = aReq.get(elem);
+            promoUnique = elem.substring(5);
+            sqlstr = "UPDATE clientPromoPages SET aJavaUnique='" + game + "',aIndex='" + aReq.get("ind_" + promoUnique) + "'"
+                    + " WHERE aPromoUnique='" + promoUnique + "'";
+            query=dbsession.createSQLQuery(sqlstr);
+            int stat=query.executeUpdate();
+        }
+    }    
+}
+
+java.util.List dms = new ArrayList();
+sqlstr = "SELECT * FROM domains WHERE aDomainUnique!='fjq32V44EqwaKUb' AND aActive='1'";
+query=dbsession.createSQLQuery(sqlstr).addScalar("aDomainUnique").addScalar("aName");
+java.util.List result2=query.list();
+for(Object o2:result2) {
+    Object[] row2=(Object[]) o2;
+    String domainunique=String.valueOf(row2[0]);
+    
+    if (domainunique.equals(dm)) { domainName = String.valueOf(row2[1]); break; }
+ }
+
+java.util.List list = new ArrayList();
+Hashtable pics = new Hashtable();
+
+if (!dm.equals("") && !srvc.equals("")) {
+    
+    sqlstr = "SELECT * FROM clientPromoPages WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "' ORDER BY aIndex";
+    System.out.println(sqlstr);
+     query=dbsession.createSQLQuery(sqlstr);
+    java.util.List res=query.list();
+    if (res.size()<=0) {
+        int k=0;
+        if (cmd.equals("hotbg")) k=5;        
+        for (int t=1; t<k; t++) {
+            sqlstr = "INSERT INTO clientPromoPages VALUES('" + Misc.generateUniqueId() + "','" + srvc + "','','" + t + "','" + MiscDate.now24sql() + "','" + dm + "')";
+            query=dbsession.createSQLQuery(sqlstr);
+            int stat=query.executeUpdate();
+        }        
+    }
+    
+    
+    sqlstr = "SELECT * FROM clientPromoPages";
+    if (cmd.equals("hotbg")) sqlstr += " LEFT JOIN bgImages AS bg ON bg.aUnique=aJavaUnique";
+    sqlstr += " WHERE aServiceUnique='" + srvc + "' AND aDomain='" + dm + "' ORDER BY aIndex";
+    
+    System.out.println(sqlstr);
+    query=dbsession.createSQLQuery(sqlstr).addScalar("aPromoUnique").addScalar("aJavaUnique").addScalar("aIndex").addScalar("aName2");
+    java.util.List result3=query.list();
+    for(Object o3:result3) {
+        Object [] row3=(Object[]) o3;
+        props = new String[4];        
+        props[0] = String.valueOf(row3[0]);
+        props[1] = String.valueOf(row3[1]);
+        props[2] = String.valueOf(row3[2]); 
+        props[3] = String.valueOf(row3[3]); 
+       
+        list.add(props);        
+    }
+        
+}
+
+trans.commit();
+dbsession.close();
+%>

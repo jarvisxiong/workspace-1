@@ -1,0 +1,116 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+//LangProps lp = LangProps.getFromContext(service.getUnique(), fileName, langcode, domain, application, true);
+//***************************************************************************************************
+
+SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+String flvDir = System.getProperty("document_root") + "/preview";
+String dataDir = System.getProperty("installDir") + "/data/mastertones";
+
+String statusMsg = "";
+String statusMsg2 = "";
+String wapSampleOk = "<span class='red_10'><b>Missing</b></span>";
+String webSampleOk = "<span class='red_10'><b>Missing</b></span>";
+
+String unique = aReq.get("unq");
+String save = aReq.get("save");
+String delete = aReq.get("del");
+String add = aReq.get("add");
+String own = aReq.get("own");
+String renew = aReq.get("renew");
+    
+String clnt = aReq.get("clnt");
+String ss = aReq.get("sort");
+
+ItemCategoryDao itemcategorydao=null;
+MastertoneDao mastertonedao=null;
+ContentProviderDao contentproviderdao=null; 
+
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+      
+          itemcategorydao=(ItemCategoryDao) ac.getBean("itemcategorydao");
+	  mastertonedao=(MastertoneDao)ac.getBean("mastertonedao");
+          contentproviderdao=(ContentProviderDao)ac.getBean("contentproviderdao");
+	  
+     }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+
+Mastertone item = mastertonedao.getItem(unique);
+
+String title = "Real Tone";
+String catType = "mastertone";
+
+if (item.getToneType().equals("4")) { title = "True Tone"; catType = "truetone"; }
+else if (item.getToneType().equals("5")) { title = "Fun Tone"; catType = "funtone"; }
+
+java.util.List<ItemCategory> cats = itemcategorydao.getCategories(catType, "");
+java.util.List<ContentProvider> cps = contentproviderdao.getAllContentProviders("name");
+
+boolean allowMod = item.getOwner().equals(sdcuser.getUserGroup()) || sdcuser.getAdminGroup()>=9 || item.getOwner().equals("9741702050521CDA");
+// UTL CP = 9741702050521CDA
+
+
+if (!save.equals("") && allowMod) {
+    
+    String catStr = "";
+    String[] catArray = request.getParameterValues("catg");
+    if (catArray!=null) {
+        for (int i=0; i<catArray.length; i++) {
+            if (!catStr.equals("")) catStr += "?";
+            catStr += catArray[i];
+        }
+    }
+    
+    item.setName1(aReq.get("name1"));
+    item.setName2(aReq.get("name2"));
+    item.setName3(aReq.get("name3"));
+    item.setName4(aReq.get("name4"));
+    item.setSongName(aReq.get("songname"));
+    item.setArtist(aReq.get("artist"));
+    item.setPriceGroup(Integer.parseInt(aReq.get("prcg","0")));
+    item.setStatus(Integer.parseInt(aReq.get("publ","0")));
+    item.setToneType(aReq.get("tonetype","1"));
+    item.setCategory(catStr);
+    item.setTeostoStatus(Integer.parseInt(aReq.get("teosto","0")));
+    item.setTeostoTitle(aReq.get("tsongname"));
+    item.setTeostoArtist(aReq.get("tartist"));
+    item.setTeostoComposer(aReq.get("tcomposer"));
+    item.setRelease(sdf.parse(aReq.get("release")));
+    item.setExpire(sdf.parse(aReq.get("expire")));
+    //item.setOwner(aReq.get("owner"));
+    mastertonedao.saveItem(item);
+    
+    //UmeTempCmsCache.itemCategoryMap = CmsDaoFactory.getItemCategoryDao().getCategoryMap();
+}
+
+
+File f = new File(flvDir + "/" + item.getOwner() + "/" + item.getPreviewFile() + ".flv");
+if (f.exists()) webSampleOk = "<span class='green_10'><b>OK</b></span>";
+f = new File(dataDir + "/" + item.getOwner() + "/wap/" + item.getPreviewFile() + ".mp3"); 
+if (f.exists()) wapSampleOk = "<span class='green_10'><b>OK</b></span>";
+
+
+%>

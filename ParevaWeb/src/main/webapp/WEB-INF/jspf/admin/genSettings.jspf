@@ -1,0 +1,54 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+GenSettingsDao generalsettingdao=null;
+UmeDomainDao umedomaindao=null;
+UmeLanguagePropertyDao langpropdao=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+generalsettingdao=(GenSettingsDao) ac.getBean("genSettings");
+umedomaindao=(UmeDomainDao) ac.getBean("umedomaindao");
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+String statusMsg="";
+String save = aReq.get("save");
+
+int _curitem = 0;
+
+
+if (!save.equals("")) {
+    generalsettingdao.saveGenSettings(request);
+    generalsettingdao.initializeGenSettings();    
+    statusMsg = "Information saved.";
+}
+
+
+java.util.List<UmeDomain> domains = umedomaindao.getDomainList();
+UmeDomain domain = null;
+
+int cs=2;
+String bgColor="#EEEEEE";
+%>
+
+
+%>

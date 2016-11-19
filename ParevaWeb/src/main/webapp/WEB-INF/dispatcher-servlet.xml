@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:cache="http://www.springframework.org/schema/cache" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:p="http://www.springframework.org/schema/p" xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:util="http://www.springframework.org/schema/util" 
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context-3.0.xsd
+        http://www.springframework.org/schema/mvc
+        http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+        http://www.springframework.org/schema/cache 
+		http://www.springframework.org/schema/cache/spring-cache.xsd
+		http://www.springframework.org/schema/util 
+		http://www.springframework.org/schema/util/spring-util-3.0.xsd
+         http://www.springframework.org/schema/aop 
+         http://www.springframework.org/schema/aop/spring-aop-3.0.xsd">
+
+	<context:property-placeholder
+		location="classpath:jdbc.properties,classpath:mail.properties"
+		ignore-unresolvable="true" ignore-resource-not-found="true" />
+	<context:component-scan base-package="ume.pareva" />
+	<cache:annotation-driven />
+
+
+
+	<bean class="org.springframework.context.support.ResourceBundleMessageSource"
+		id="messageSource">
+		<property name="basename" value="messages" />
+	</bean>
+
+	<bean id="hikariConfig" class="com.zaxxer.hikari.HikariConfig">
+		<property name="poolName" value="springHikariCP" />
+		<property name="connectionTestQuery" value="SELECT 1" />
+		<property name="dataSourceClassName" value="${database.driver}" />
+		<property name="dataSourceProperties">
+			<props>
+				<prop key="url">${database.url}</prop>
+				<prop key="user">${database.user}</prop>
+				<prop key="password">${database.password}</prop>
+				<prop key="cachePrepStmts">${database.cachePrepStmts}</prop>
+				<prop key="prepStmtCacheSize">${database.prepStmtCacheSize}</prop>
+				<prop key="prepStmtCacheSqlLimit">${database.prepStmtCacheSqlLimit}</prop>
+
+			</props>
+		</property>
+	</bean>
+
+	<bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource"
+		destroy-method="close">
+		<constructor-arg ref="hikariConfig" />
+	</bean>
+
+	<!-- <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" 
+		destroy-method="close"> <property name="driverClassName" value="${database.driver}" 
+		/> <property name="url" value="${database.url}" /> <property name="username" 
+		value="${database.user}" /> <property name="password" value="${database.password}" 
+		/> <property name="removeAbandoned" value="${dbcp.removeAbandoned}" /> <property 
+		name="removeAbandonedTimeout" value="${dpcp.removeAbandonedTimeout}" /> <property 
+		name="initialSize" value="${dbcp.initialSize}" /> <property name="maxActive" 
+		value="${dbcp.maxActive}" /> <property name="maxWait" value="${dbcp.maxWait}" 
+		/> <property name="minIdle" value="${dpcp.minIdle}" /> <property name="maxIdle" 
+		value="${dpcp.maxIdle}" /> </bean> -->
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+
+
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</prop>
+				<prop key="hibernate.show_sql">false</prop>
+				<prop key="hibernate.cache.use_query_cache">true</prop>
+				<prop key="hibernate.cache.use_second_level_cache">true</prop>
+				<prop key="hibernate.cache.provider_class">org.hibernate.cache.EhCacheProvider</prop>
+				<prop key="hibernate.cache.region.factory_class">org.hibernate.cache.ehcache.EhCacheRegionFactory
+				</prop>
+				<prop key="hibernate.cache.provider_configuration_file_resource_path">classpath:ehcache.xml</prop>
+				<prop key="hibernate.generate_statistics">true</prop>
+				<prop key="hibernate.jdbc.batch_size">30 </prop>
+
+			</props>
+		</property>
+	</bean>
+
+	<bean id="cacheManager" class="org.springframework.cache.ehcache.EhCacheCacheManager"
+		p:cache-manager-ref="ehcache" />
+	<bean id="ehcache"
+		class="org.springframework.cache.ehcache.EhCacheManagerFactoryBean"
+		p:config-location="classpath:ehcache.xml" />
+
+
+	<bean id="umesdc" class="ume.pareva.dao.UmeTempCache">
+	</bean>
+
+
+	<bean id="appserverparameters" class="ume.pareva.sdk.ServerParam"></bean>
+	<bean id="cmsparameters" class="ume.pareva.cms.InitCmsParameters"></bean>
+
+	<bean id="umefilter" class="ume.pareva.core.UmeFilter">
+
+	</bean>
+
+	<bean id="umestartup" class="ume.pareva.ParevaStartup"
+		init-method="init"></bean>
+	<bean id="filterinitialise" class="ume.pareva.core.UmeFilterInitialise"
+		init-method="initializeFilter"></bean>
+	<bean id="umehandlerequests" class="ume.pareva.core.UmeHandleRequests"></bean>
+
+
+	<bean id="genSettings" class="ume.pareva.dao.GenSettingsDao">
+	</bean>
+	<bean id="umepackage" class="ume.pareva.dao.UmePackageDao">
+	</bean>
+	<bean id="umeresellerkeyword" class="ume.pareva.dao.UmeResellerKeywordDao">
+	</bean>
+	<bean id="umedomaindao" class="ume.pareva.dao.UmeDomainDao">
+	</bean>
+	<bean id="umeservicedao" class="ume.pareva.dao.UmeServiceDao">
+	</bean>
+	<bean id="umesmskeyworddao" class="ume.pareva.dao.UmeSmsKeywordDao">
+	</bean>
+	<bean id="umeservicemenudao" class="ume.pareva.dao.UmeServiceMenuDao">
+	</bean>
+	<bean id="umeusergroupdao" class="ume.pareva.dao.UmeUserGroupDao">
+	</bean>
+	<bean id="umelanguagedao" class="ume.pareva.dao.UmeLanguageDao">
+	</bean>
+	<bean id="umelanguagepropertydao" class="ume.pareva.dao.UmeLanguagePropertyDao">
+	</bean>
+	<bean id="umepersonalcache" class="ume.pareva.dao.UmePersonalCache">
+	</bean>
+	<bean id="umecategorydao" class="ume.pareva.dao.UmeCategoryDao">
+	</bean>
+	<bean id="umesmsservicedao" class="ume.pareva.dao.UmeSmsServiceDao">
+	</bean>
+	<bean id="umesmsgatewaydao" class="ume.pareva.dao.UmeSmsGatewayDao">
+	</bean>
+	<bean id="umesmsaccountdao" class="ume.pareva.dao.UmeSmsAccountDao">
+	</bean>
+	<bean id="umesmsdao" class="ume.pareva.dao.UmeSmsDao">
+	</bean>
+	<bean id="sdklanguagedaos" class="ume.pareva.sdk.LanguageDao">
+	</bean>
+	<bean id="languages" class="ume.pareva.sdk.Languages">
+	</bean>
+	<bean id="categories" class="ume.pareva.sdk.Categories">
+	</bean>
+	<bean id="usergroups" class="ume.pareva.sdk.UserGroups">
+	</bean>
+	<bean id="services" class="ume.pareva.sdk.Services">
+	</bean>
+	<bean id="domainparameterdao" class="ume.pareva.cms.DomainParameterDao"></bean>
+	<bean id="mobileclubdao" class="ume.pareva.cms.MobileClubDao"></bean>
+	<bean id="itemcategorydao" class="ume.pareva.cms.ItemCategoryDao"></bean>
+	<bean id="clientdao" class="ume.pareva.cms.ClientDao"></bean>
+	<bean id="mobileclubcampaigndao" class="ume.pareva.cms.MobileClubCampaignDao"></bean>
+	<bean id="snpuserdao" class="ume.pareva.snp.SnpUserDao"></bean>
+	<bean id="umeuserdetailsdao" class="ume.pareva.dao.UmeUserDetailsDao"></bean>
+	<bean id="umemobileclubuserdao" class="ume.pareva.dao.UmeMobileClubUserDao"></bean>
+	<bean id="umeuserdao" class="ume.pareva.dao.UmeUserDao">
+	</bean>
+	<bean id="sdkusers" class="ume.pareva.sdk.Users">
+	</bean>
+	<bean id="sdkuserdetailsdao" class="ume.pareva.sdk.UserDetailsDao">
+	</bean>
+	<bean id="handsetdao" class="ume.pareva.sdk.HandsetDao">
+	</bean>
+	<bean id="contentdao" class="ume.pareva.cms.ContentDao">
+	</bean>
+	<bean id="contentproviderdao" class="ume.pareva.cms.ContentProviderDao">
+	</bean>
+	<bean id="banneraddao" class="ume.pareva.cms.BannerAdDao">
+	</bean>
+	<bean id="mastertonedao" class="ume.pareva.cms.MastertoneDao">
+	</bean>
+	<bean id="itemdeletedao" class="ume.pareva.cms.ItemDeleteDao">
+	</bean>
+	<bean id="itemresourcesdao" class="ume.pareva.cms.ItemResourceDao">
+	</bean>
+	<bean id="itemimagesdao" class="ume.pareva.cms.ItemImageDao">
+	</bean>
+	<bean id="videoclipdao" class="ume.pareva.cms.VideoClipDao">
+	</bean>
+	<bean id="bgimagesdao" class="ume.pareva.cms.BgImageDao">
+	</bean>
+	<bean id="javagamedao" class="ume.pareva.cms.JavaGameDao">
+	</bean>
+	<bean id="ringtonedao" class="ume.pareva.cms.RingtoneDao">
+	</bean>
+	<bean id="gifanimdao" class="ume.pareva.cms.GifAnimDao">
+	</bean>
+	<bean id="bannerlogdao" class="ume.pareva.cms.BannerLogDao">
+	</bean>
+	<bean id="logitemdao" class="ume.pareva.cms.LogItemDao">
+	</bean>
+	<bean id="oprlogodao" class="ume.pareva.cms.OprLogoDao">
+	</bean>
+	<bean id="picmessagedao" class="ume.pareva.cms.PicMessageDao">
+	</bean>
+	<bean id="mobicoupondao" class="ume.pareva.cms.MobiCouponDao">
+	</bean>
+	<bean id="itemticket" class="ume.pareva.cms.ItemTicket">
+	</bean>
+	<bean id="truetonedao" class="ume.pareva.cms.TruetoneDao">
+	</bean>
+	<bean id="itemlinklogdao" class="ume.pareva.contentcms.ItemLinkLogDao">
+	</bean>
+	<bean id="itemlogger" class="ume.pareva.cms.ItemLogger">
+	</bean>
+	<bean id="umeclubdetailsdao" class="ume.pareva.cms.UmeClubDetailsDao">
+	</bean>
+	<bean id="redirectsettingdao" class="ume.pareva.dao.RedirectSettingDao">
+	</bean>
+	<bean id="regiontemplateloader" class="ume.pareva.template.RegionTemplateLoader">
+	</bean>
+	<bean id="billingplandao" class="ume.pareva.dao.MobileClubBillingPlanDao">
+	</bean>
+
+
+	<bean id="templateengine" class="ume.pareva.template.TemplateEngine">
+	</bean>
+	<bean id="internetserviceprovider" class="ume.pareva.userservice.InternetServiceProvider">
+	</bean>
+	<bean id="landingpage" class="ume.pareva.userservice.LandingPage">
+	</bean>
+	<bean id="zaitemticket" class="ume.pareva.cms.ZAItemTicket">
+	</bean>
+	<bean id="videolistuk" class="ume.pareva.userservice.VideoListUK">
+	</bean>
+
+	<bean id="pebbleEngine" class="com.mitchellbosecke.pebble.PebbleEngine"></bean>
+
+
+	<bean id="misc" class="ume.pareva.sdk.Misc">
+	</bean>
+	<bean id="miscr" class="ume.pareva.sdk.MiscCr">
+	</bean>
+	<bean id="zasmsconnection" class="ume.pareva.smsapi.ZaSmsConnection">
+	</bean>
+
+
+
+
+
+	<tx:annotation-driven transaction-manager="hibernateTransactionManager" />
+
+	<bean id="hibernateTransactionManager"
+		class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+
+
+
+	<!-- WURFLEngine, automatically exported in ServletContext, if you need 
+		outside Spring. See Javadoc -->
+	<bean id="net.sourceforge.wurfl.core.WURFLEngine" class="net.sourceforge.wurfl.core.GeneralWURFLEngine">
+
+		<constructor-arg index="0" value="classpath:/wurfl.zip" />
+		<!-- <constructor-arg index="1" value="classpath:/web_browsers_patch.xml"/> -->
+		<!-- <constructor-arg index="2" value="<< more patches here >>"/> -->
+
+		<property name="engineTarget" value="performance" />
+
+		<!-- set the list of the capablities to be loaded from the wurfl database 
+			notice that the list here below contains the capabilities required by the 
+			helloworld to work correctly -->
+		<property name="capabilityFilter">
+			<set>
+				<value>is_wireless_device</value>
+				<value>preferred_markup</value>
+				<value>xhtml_support_level</value>
+				<value>xhtmlmp_preferred_mime_type</value>
+				<value>device_os</value>
+				<value>device_os_version</value>
+				<value>is_tablet</value>
+				<value>mobile_browser_version</value>
+				<value>pointing_method</value>
+				<value>mobile_browser</value>
+				<value>resolution_width</value>
+				<value>resolution_height</value>
+				<value>wallpaper_preferred_width</value>
+				<value>wallpaper_max_width</value>
+				<value>brand_name</value>
+				<value>model_name</value>
+				<value>can_assign_phone_number</value>
+				<value>marketing_name</value>
+				<value>ux_full_desktop</value>
+				<value>is_smarttv</value>
+				<value>playback_mp4</value>
+				<value>playback_3gpp</value>
+			</set>
+		</property>
+
+	</bean>
+
+	<!-- <bean class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+		<property name="targetClass" value="java.lang.System" />
+		<property name="targetMethod" value="setProperty" />
+		<property name="arguments">
+			<list>
+				<value>smtp_default_from</value>
+				<value>${smtp_default_from}</value>
+				<value>smtp_server</value>
+				<value>${smtp_server}</value>
+				<value>smtp_protocol</value>
+				<value>${smtp_protocol}</value>
+				<value>smtp_user</value>
+				<value>${smtp_user}</value>
+				<value>smtp_pw</value>
+				<value>${smtp_pw}</value>
+				<value>smtp_port</value>
+				<value>${smtp_port}</value>
+				<value>smtp_ssl</value>
+				<value>${smtp_ssl}</value>
+				<value>smtp_debug</value>
+				<value>${smtp_debug}</value>
+			</list>
+		</property>
+	</bean> -->
+	
+	 <bean id="systemProps" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+    	   <property name="targetObject" value="#{@systemProperties}" />
+    	   <property name="targetMethod" value="putAll" />
+    	   <property name="arguments">
+              <util:properties>
+                 <prop key="smtp_default_from">${smtp_default_from}</prop>
+                 <prop key="smtp_server">${smtp_server}</prop>
+                 <prop key="smtp_protocol">${smtp_protocol}</prop>
+                 <prop key="smtp_user">${smtp_user}</prop>
+                 <prop key="smtp_pw">${smtp_pw}</prop>
+                 <prop key="smtp_port">${smtp_port}</prop>
+                 <prop key="smtp_ssl">${smtp_ssl}</prop>
+                 <prop key="smtp_debug">${smtp_debug}</prop>
+              </util:properties>
+   	   </property>
+	</bean>
+ 
+</beans>

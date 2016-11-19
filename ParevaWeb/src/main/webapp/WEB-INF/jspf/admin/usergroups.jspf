@@ -1,0 +1,91 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeTempCache umesdc=null;
+UmeLanguagePropertyDao langpropdao=null;
+UmeUserGroupDao umeusergroupdao=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+umesdc=(UmeTempCache) ac.getBean("umesdc");
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+umeusergroupdao=(UmeUserGroupDao) ac.getBean("umeusergroupdao");
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+UmeUserGroup group = null;
+UmeUserGroup subgroup = null;
+UmeDomain umedomain = null;
+
+
+String statusMsg="";
+String addName="";
+String dUnique="";
+String parent="";
+
+String addButton = aReq.get("add");
+String deleteButton = aReq.get("delete");
+
+
+if (!addButton.equals("")) {
+    
+	addName = aReq.get("addName");
+	dUnique = aReq.get("dUnique");
+	parent = aReq.get("parent");
+	
+	if (!addName.equals("")) {
+
+            group = new UmeUserGroup();
+            group.setName(addName);
+            group.setDomain(dUnique);
+            group.setParent(parent);
+
+            if (umeusergroupdao.addUserGroup(group)) {
+                umeusergroupdao.initializeUserGroups();
+                statusMsg = lp.get(1);
+                addName = "";
+            }
+            else statusMsg = lp.get(3);
+	}
+	else statusMsg = lp.get(5);
+
+}
+else if (!deleteButton.equals("")) {
+
+    Enumeration e = request.getParameterNames();
+
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("del_")) umeusergroupdao.deleteUserGroup(elem.substring(4));
+    }
+
+    umeusergroupdao.initializeUserGroups();
+    statusMsg = lp.get("deleted");
+}
+
+java.util.List<UmeUserGroup> list = umesdc.getUserGroupList();
+
+int cs=6;
+String bgColor="#EEEEEE";
+%>

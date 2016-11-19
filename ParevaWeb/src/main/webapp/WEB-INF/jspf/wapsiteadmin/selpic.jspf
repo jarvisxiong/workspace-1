@@ -1,0 +1,95 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "iso-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "selpic";
+//***************************************************************************************************
+
+String statusMsg = "";
+
+String docRoot = System.getProperty("document_root");
+
+String client = aReq.get("clnt");
+String pic = aReq.get("pic");
+String srvc = aReq.get("srvc");
+String cmd = aReq.get("cmd");
+String fp = aReq.get("fp");
+String delpic = aReq.get("delpic");
+String restype = aReq.get("restype");
+
+String contentType = request.getHeader("Content-Type");
+if (contentType==null) contentType="";
+
+if (contentType.startsWith("multipart/form-data")) {
+    
+    String boundary = "";
+    try { boundary = contentType.substring((contentType.indexOf("boundary=")+9)); }
+    catch (IndexOutOfBoundsException e) {}
+
+    int length = 0;
+    try { length = Integer.parseInt(request.getHeader("Content-Length")); }
+    catch (NumberFormatException e) {}
+
+    if (!boundary.equals("") && length>0) {
+        HashMap map = FileUtil.parseMultiPartFormData(length, boundary,
+                   new BufferedLineReader(new InputStreamReader(request.getInputStream(), "iso-8859-1"), 1024));
+
+        srvc = (String) map.get("srvc");
+        cmd = (String) map.get("cmd");
+        pic =  (String) map.get("pic");
+        fp = (String) map.get("fp");
+
+        String[] props = (String[]) map.get("img");
+        String imgName = ((String) map.get("imgname")).trim();
+
+        if (!props[0].equals("") && !props[2].equals("")) {
+
+            String newid = Misc.generateUniqueId();
+            String fName =  newid;
+            props[2] = props[2].toLowerCase();
+
+            if (props[2].endsWith(".gif")) fName += ".gif";
+            else if (props[2].endsWith(".png")) fName += ".png";
+            else fName += ".jpg";
+            
+            if (!imgName.equals("")) { 
+                imgName = Misc.replaceUmlauts(imgName);
+                imgName = Misc.replaceChars(imgName, " ", "_");
+                if (Misc.validateFile(imgName)) fName = imgName + "_" + fName;
+            }
+
+            FileUtil.writeRawToFile(docRoot + "/images/javagames/promos/source/" + fName, props[0], false);
+
+        }
+    }   
+}
+else if (!delpic.equals("")) {
+    
+    File ff = new File(docRoot + "/images/javagames/promos/source/" + Misc.hex8Decode(delpic));
+    System.out.println(ff);
+    if (ff.exists()) ff.delete();
+}
+
+String srcPage = "modcontest";
+if (!cmd.equals("")) srcPage = "modpromo";
+if (!fp.equals("")) srcPage = fp;
+
+File dir = new File(docRoot + "/images/javagames/promos/source/");
+File[] files = dir.listFiles();
+String fName = "";
+String lowName = "";
+
+
+int cs=2;
+String bgColor="";
+%>

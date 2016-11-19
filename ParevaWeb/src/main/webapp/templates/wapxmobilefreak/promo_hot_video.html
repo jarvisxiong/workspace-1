@@ -1,0 +1,68 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0;">
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Playlist - Free Mobile Website Template from Mobifreaks.com</title>
+    <link href="css/style.css" type="text/css" rel="stylesheet">
+	<script src="jquery/jquery-latest.js" type="text/javascript"></script>
+</head>
+
+<body>
+<div id="wrap">
+    <div class="header">
+        
+       
+    
+        <div class="list">
+        	{% if handset.xhtmlProfile == 4 %}
+ 
+		<a href="videodetail.jsp?unq={{props}}">
+        <div id="body-wrapper" {{style1}}>
+            <div class="video-box">
+                <div class="item-box-picture">
+                    <div class="image-wrap"><img src="{{img}}" width="128px" height="112px" /></div>
+                </div>
+                <div class="item-box-details">
+                    <span class="video-title">{{title}}</span>
+                    <span class="video-gtitle">{{gtitle}}</span>
+                    <ul class="stats">
+                        <li>{{viewsNumber}} Views &nbsp;&nbsp;{{ratingNumber}}% Like</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </a>
+	
+	{% else %}
+    <div class="item_promo" {{style1}} align="left">
+        <table cellpadding="6" cellspacing="0" border="0" width="{{handset.fullWidth}}">
+            <tr>  
+				{% if img !=' ' %}	
+                 
+					<td id="thumbnailTd" valign="top" align="left"><img src="${img}" width="${iw}" height="${ih}" /></td>
+				{% endif %}
+                <td valign="top">
+                    <b>{{title}}</b><br/>{{gtitle}}<br/>
+                    <span class="rating">{{viewsNumber}} Views &nbsp;&nbsp;{{ratingNumber}}% Like<span><br>
+                    &#187; <a href="videodetail.jsp?unq={{props}}" {{style2}}>{{download}}</a><br/>
+                </td>           
+            </tr>        
+        </table>
+    </div>
+	{% endif %}
+        </div>
+    </div>
+    
+</div>
+<script type="text/javascript">
+	$('.nav').hide();
+	$('#show').click(function (){
+		$('.nav').show();
+	});
+	$('#hide').click(function (){
+		$('.nav').hide();
+	});
+</script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%
+//***************************************************************************************************
+SdcRequest aReq = new SdcRequest(request);
+UmeUser sdcuser = aReq.getUser();
+UmeDomain dmn = aReq.getDomain();
+SdcService service = aReq.getService();
+
+String domain = dmn.getUnique();
+String langcode = aReq.getLanguage().getLanguageCode();
+
+String stylesheet = aReq.getStylesheet();
+String pageEnc = aReq.getEncoding();
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = request.getServletPath();
+fileName = fileName.substring(fileName.lastIndexOf("/")+1);
+fileName = fileName.substring(0,fileName.lastIndexOf("."));
+
+UmeDomainDao umedomaindao=null;
+UmeServiceDao umeservicedao=null;
+UmeLanguagePropertyDao langpropdao=null;
+UmeTempCache anyxsdc=null;
+try{
+ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+umedomaindao=(UmeDomainDao) ac.getBean("umedomaindao");
+umeservicedao=(UmeServiceDao) ac.getBean("umeservicedao");
+langpropdao=(UmeLanguagePropertyDao) ac.getBean("umelanguagepropertydao");
+anyxsdc=(UmeTempCache) ac.getBean("umesdc");
+
+}
+catch(Exception e){
+    e.printStackTrace();
+}
+
+
+SdcLanguageProperty lp = langpropdao.get(fileName, service, aReq.getLanguage(), dmn);
+//***************************************************************************************************
+
+UmeDomain sdcd= null;
+String statusMsg="";
+
+String msisdnHeaders = "x-nokia-msisdn\r\nx-up-calling-line-id\r\nx-msisdn\r\nx-wap-msisdn\r\n";
+
+String partnerDomain = "5510024809921CDS"; // UME Club Users
+partnerDomain = "0751824341421CDA";
+
+
+if (!aReq.get("add").equals("")) {
+
+    String name = aReq.get("addName");
+    if (name.equals("")) statusMsg = lp.get(5);
+    else {
+        sdcd = new UmeDomain();
+        sdcd.setName(name);
+        sdcd.setDefaultUrl(name);
+        sdcd.setDefPublicDir("wapx");
+        sdcd.setDefPrivateDir("wapx");
+        sdcd.setDefPublicPage("index.jsp");
+        sdcd.setDefPrivatePage("index.jsp");
+        sdcd.setWapIps("1");
+        sdcd.setMsisdnHeaders(msisdnHeaders);
+        sdcd.setPartnerDomain(partnerDomain);
+        
+        if (umedomaindao.addDomain(sdcd)) {
+            umedomaindao.initializeDomains();
+            //umeservicedao.initializeServices();
+            statusMsg = lp.get(1);
+        }
+        else statusMsg = lp.get(2);
+    }
+}
+
+if (!aReq.get("delete").equals("")) {
+
+    Enumeration e = request.getParameterNames();
+
+    for (;e.hasMoreElements();) {
+        String elem = (String) e.nextElement();
+        if (elem.startsWith("del_")) umedomaindao.deleteDomain(elem.substring(4));
+    }
+
+    umedomaindao.initializeDomains();
+}
+
+java.util.List<UmeDomain> list = anyxsdc.getDomainList();
+
+
+
+%>

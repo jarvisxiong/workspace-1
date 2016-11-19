@@ -1,0 +1,326 @@
+<%@page import="javax.sound.sampled.AudioSystem"%>
+<%@page import="org.tritonus.share.sampled.file.TAudioFileFormat"%>
+<%@page import="javax.sound.sampled.AudioFileFormat"%>
+<%@include file="/WEB-INF/jspf/coreimport.jspf"%>
+<%@include file="/WEB-INF/jspf/db.jspf"%>
+<%
+//***************************************************************************************************
+AdminRequest aReq = new AdminRequest(request);
+String uid = aReq.getUserId();
+String ugid = aReq.getUserGroup();
+String anyxSrvc = aReq.getAnyxService();
+String domain = aReq.getDomain();
+String lang = aReq.getLanguage();
+String stylesheet = System.getProperty("stylesheet_" + lang);
+String pageEnc = System.getProperty("lang_" + lang);
+if (pageEnc == null) pageEnc = "iso-8859-1";
+response.setContentType("text/html; charset=" + pageEnc);
+
+String fileName = "/itemadmin/truetone/changefile";
+//***************************************************************************************************
+
+String polySampleDir = System.getProperty("document_root") + "/images/true4ih86tr54e";
+String polyDataDir = System.getProperty("installDir") + "/data/truetones";
+String lamecmd = "/usr/local/bin/lame";
+
+Query query=null;
+Transaction trans=dbsession.beginTransaction();
+
+String sqlstr = "";
+String statusMsg = "";
+String statusMsg1 = "";
+String statusMsg2 = "";
+String[] props = null;
+
+String contentType = request.getHeader("Content-Type");
+if (contentType==null) contentType="";
+
+String convsrc = aReq.get("conv_src");
+String convsample = aReq.get("conv_sample");
+String convdata = aReq.get("conv_data");    
+String crsample = aReq.get("create_sample");
+String crdata = aReq.get("create_data");    
+
+String unique = aReq.get("unq");
+
+String cat = aReq.get("cat");
+String sIndex = aReq.get("si");
+String dFile = Misc.hex8Decode(aReq.get("dfile"));
+String sFile = Misc.hex8Decode(aReq.get("sfile"));
+
+String bitr = aReq.get("bitrate", "64");
+String cmode = aReq.get("cmode", "m");
+String freq = aReq.get("freq", "44.1");
+int dur = Integer.parseInt(aReq.get("dur", "0").trim());
+
+
+if (contentType.startsWith("multipart/form-data")) {
+
+    String boundary = "";
+    try { boundary = contentType.substring((contentType.indexOf("boundary=")+9)); } catch (IndexOutOfBoundsException e) {}
+
+    int length = 0;
+    try { length = Integer.parseInt(request.getHeader("Content-Length")); } catch (NumberFormatException e) {}
+
+    if (!boundary.equals("") && length>0) {
+        HashMap map = FileUtil.parseMultiPartFormData(length, boundary,
+                new BufferedLineReader(new InputStreamReader(request.getInputStream(), "iso-8859-1"), 1024));
+
+        String[] dData = (String[]) map.get("ddata");
+        String[] sData = (String[]) map.get("sdata");
+        String[] oData = (String[]) map.get("odata");
+
+        unique = (String) map.get("unq");
+        cat = (String) map.get("cat");
+        sIndex = (String) map.get("si");
+        dFile = Misc.hex8Decode((String) map.get("dfile"));
+        sFile = Misc.hex8Decode((String) map.get("sfile"));
+
+        if (oData!=null) {               
+            System.out.println("oData: " + oData[0].length() + " : " + oData[2]);
+            if (oData[0].equals("") || oData[2].equals("")) { statusMsg1 = "Source file not updated."; } 
+            else if (!oData[2].toLowerCase().endsWith(".mp3")) { statusMsg1 = "Incorrect data file format."; }
+
+            if (statusMsg1.equals("")) {
+                File f = new File(polyDataDir + "/originals/" + unique + ".mp3");
+                f.delete();
+
+                String ownerRef = "";
+                if (oData[2].indexOf("_")>-1) ownerRef = oData[2].substring(0, oData[2].indexOf("_"));
+
+                FileUtil.writeRawToFile(polyDataDir + "/originals/" + unique + ".mp3", oData[0], false);
+                sqlstr = "UPDATE trueTones set aOriginalFile='" + Misc.encodeForDb(oData[2]) + "', aOwnerReference='" + ownerRef + "'"
+                        + " WHERE aUnique='" + unique + "'";
+                query=dbsession.createSQLQuery(sqlstr);
+                query.executeUpdate();
+
+                statusMsg1 = "<span class='green_12'><b>Source file updated.</b></span>";
+            }
+        } else { statusMsg = "System error3 (source file)."; }
+
+        if (dData!=null) {
+            System.out.println("dData: " + dData[0].length() + " : " + dData[2]);
+            if (dData[0].equals("") || dData[2].equals("")) { statusMsg = "Data file not updated."; } 
+            else if (!dData[2].toLowerCase().endsWith(".mp3")) { statusMsg = "Incorrect data file format."; }
+
+            if (statusMsg.equals("")) {
+                if (!dFile.equals("")) {
+                    if (!dFile.toLowerCase().endsWith(".mp3")) dFile += ".mp3";
+                    File f = new File(polyDataDir + "/" + dFile);
+                    f.delete();
+                }
+                String ownerRef = "";
+                if (dData[2].indexOf("_")>-1) ownerRef = dData[2].substring(0, dData[2].indexOf("_"));
+
+                FileUtil.writeRawToFile(polyDataDir + "/" + unique + ".mp3", dData[0], false);
+                sqlstr = "UPDATE trueTones set aSampleFile='" + unique + ".mp3', aOriginalFile='" + Misc.encodeForDb(oData[2]) + "'"
+                        + ", aOwnerReference='" + ownerRef + "' WHERE aUnique='" + unique + "'";
+                query=dbsession.createSQLQuery(sqlstr);
+                query.executeUpdate();
+
+                statusMsg = "<span class='green_12'><b>Data file updated.</b></span>";
+            }
+        } else { statusMsg = "System error2 data file)."; }
+
+
+        if (sData!=null) {
+            System.out.println("sData: " + sData[0].length() + " : " + sData[2]);
+            if (sData[0].equals("") || sData[2].equals("")) { statusMsg2 = "Sample file not updated."; } 
+            else if (!sData[2].toLowerCase().endsWith(".mp3")) { statusMsg2 = "Incorrect sample file format."; }
+
+            if (statusMsg2.equals("")) {
+                if (!sFile.equals("")) {
+                    if (!sFile.toLowerCase().endsWith(".mp3")) sFile += ".mp3";
+                    System.out.println("deleting: " + polySampleDir + "/" + sFile);
+                    File f = new File(polySampleDir + "/" + sFile);
+                    f.delete();
+                }
+
+                FileUtil.writeRawToFile(polySampleDir + "/" + unique + ".mp3", sData[0], false);
+                sqlstr = "UPDATE trueTones set aPreviewFile='" + unique + ".mp3'"
+                        + " WHERE aUnique='" + unique + "'";
+                
+                query=dbsession.createSQLQuery(sqlstr);
+                query.executeUpdate();
+
+                statusMsg2 = "<span class='green_12'><b>Sample file updated.</b></span>";
+            }
+        } else { statusMsg2 = "System error (sample file)."; }
+
+    }
+}
+else if (!convsample.equals("") || !convdata.equals("")) {
+
+    try {
+
+        String filedir = polyDataDir;
+        String fName = dFile;
+        if (!convsample.equals("")) {
+            filedir = polySampleDir;
+            fName = sFile;
+        }
+
+        String resample = "22.05";
+        if (bitr.equals("16") || bitr.equals("24") || bitr.equals("32")) resample = "22.05";
+        else resample = "44.1";            
+        String srcFile = filedir + "/" + fName;
+        String[] cmd = new String[9];
+        cmd[0] = lamecmd;
+        cmd[1] = "-m";
+        cmd[2] = cmode;
+        cmd[3] = "--resample";
+        cmd[4] = resample;
+        cmd[5] = "-b";
+        cmd[6] = bitr;
+        cmd[7] = srcFile;
+        cmd[8] = srcFile + ".temp.mp3";           
+        
+        System.out.println("lamecmd: " + lamecmd + " -m " + cmode + " --resample " + resample + " -b " + bitr + " " + srcFile + " " + srcFile + ".temp.mp3");
+        
+        Runtime rt = Runtime.getRuntime();       
+        Process proc = rt.exec(cmd); 
+
+        StreamGobbler errorGobbler = new StreamGobbler(proc.getErrorStream(), "ERROR");            
+        StreamGobbler outputGobbler = new StreamGobbler(proc.getInputStream(), "OUTPUT");              
+        errorGobbler.start();
+        outputGobbler.start();
+
+        int exitVal = proc.waitFor();
+        System.out.println("ExitValue LAME: " + exitVal);     
+                
+        File srcf = new File(filedir + "/" + fName);
+        File destf = new File(filedir + "/" + fName + ".temp.mp3");
+        srcf.delete();
+        destf.renameTo(srcf);
+
+        System.out.println("End");
+
+   } catch (Exception e) { System.out.println(e); statusMsg1 = "Error converting: " + e; }
+
+}
+else if (!crsample.equals("") || !crdata.equals("")) {
+
+    try {
+
+        String filedir = polyDataDir;
+        String fName = dFile;
+        if (!crsample.equals("")) {
+            filedir = polySampleDir;
+            fName = sFile;
+        }
+
+        if (fName.equals("")) fName = unique + ".mp3";
+
+        String resample = "22.05";
+        if (bitr.equals("16") || bitr.equals("24") || bitr.equals("32")) resample = "22.05";
+        else resample = "44.1";            
+        String srcFile = polyDataDir + "/originals/" + unique + ".mp3";   
+        String destFile = filedir + "/" + fName;              
+        String[] cmd = new String[9];
+        cmd[0] = lamecmd;
+        cmd[1] = "-m";
+        cmd[2] = cmode;
+        cmd[3] = "--resample";
+        cmd[4] = resample;
+        cmd[5] = "-b";
+        cmd[6] = bitr;
+        cmd[7] = srcFile;
+        cmd[8] = destFile + ".temp.mp3"; 
+        
+        System.out.println("lamecmd: " + lamecmd + " -m " + cmode + " --resample " + resample + " -b " + bitr + " " + srcFile + " " + destFile + ".temp.mp3");
+
+        Runtime rt = Runtime.getRuntime();       
+        Process proc = rt.exec(cmd); 
+
+        StreamGobbler errorGobbler = new StreamGobbler(proc.getErrorStream(), "ERROR");            
+        StreamGobbler outputGobbler = new StreamGobbler(proc.getInputStream(), "OUTPUT");              
+        errorGobbler.start();
+        outputGobbler.start();
+
+        int exitVal = proc.waitFor();
+        System.out.println("ExitValue LAME: " + exitVal);     
+
+        File srcf = new File(filedir + "/" + fName);
+        File destf = new File(filedir + "/" + fName + ".temp.mp3");
+        srcf.delete();
+        destf.renameTo(srcf);
+
+        if (!crsample.equals("")) sqlstr = "UPDATE trueTones set aPreviewFile='" + Misc.encodeForDb(fName) + "' WHERE aUnique='" + unique + "'";      
+        else sqlstr = "UPDATE trueTones set aSampleFile='" + Misc.encodeForDb(fName) + "' WHERE aUnique='" + unique + "'";
+       
+        query=dbsession.createSQLQuery(sqlstr);
+        query.executeUpdate();
+
+
+   } catch (Exception e) { System.out.println(e); statusMsg1 = "Error converting sample: " + e; }
+
+}
+TruetoneDao truetonedao=null;
+ try{
+      ServletContext servletContext = (ServletContext) request.getSession().getServletContext();
+      ApplicationContext ac = RequestContextUtils.getWebApplicationContext(request,servletContext);
+      
+          truetonedao=(TruetoneDao)ac.getBean("truetonedao");
+ }
+      catch(Exception e){
+          e.printStackTrace();
+      }
+Truetone item = truetonedao.getItem(unique);
+
+sqlstr = "SELECT * FROM trueTones WHERE aUnique='" + unique + "'";
+query=dbsession.createSQLQuery(sqlstr).addScalar("aUnique").addScalar("aSampleFile").addScalar("aPreviewFile").addScalar("aOwner")
+        .addScalar("aOriginalFile");
+java.util.List result=query.list();
+if (result.size()>0) {
+    for(Object o:result){
+    Object[] row=(Object[]) o;
+    props = new String[5];
+    props[0] = String.valueOf(row[0]);
+    props[1] = String.valueOf(row[1]);
+    props[2] = String.valueOf(row[2]);
+    props[3] = String.valueOf(row[3]);
+    props[4] = String.valueOf(row[4]);
+}
+}
+
+
+Map sampleProps = null;
+boolean sampleExists = false;
+File samp = new File(polySampleDir + "/" + props[2]);
+if (samp!=null && samp.exists() && !samp.isDirectory()) {
+    sampleExists = true;
+    AudioFileFormat baseFileFormat = AudioSystem.getAudioFileFormat(samp);           
+    if (baseFileFormat instanceof TAudioFileFormat)
+        sampleProps = ((TAudioFileFormat) baseFileFormat).properties();
+}
+
+
+Map dataProps = null;
+boolean dataExists = false;
+File df = new File(polyDataDir + "/" + props[1]);
+if (df!=null && df.exists() && !df.isDirectory()) {
+    dataExists = true;
+    AudioFileFormat baseFileFormat = AudioSystem.getAudioFileFormat(df);           
+    if (baseFileFormat instanceof TAudioFileFormat)
+        dataProps = ((TAudioFileFormat) baseFileFormat).properties();
+}
+
+boolean orgExists = false;
+Map properties = null;
+File org = new File(polyDataDir + "/originals/" + unique + ".mp3");    
+if (org!=null && org.exists() && !org.isDirectory()) {
+    orgExists = true;
+    AudioFileFormat baseFileFormat = AudioSystem.getAudioFileFormat(org);           
+    if (baseFileFormat instanceof TAudioFileFormat)
+        properties = ((TAudioFileFormat) baseFileFormat).properties();
+}
+
+dFile = props[1];
+sFile = props[2];
+
+trans.commit();
+dbsession.close();
+int cs=4;
+String bgColor="";
+%>
+

@@ -1,0 +1,73 @@
+# GENERAL LANGUAGE FILE FOR SPANISH
+
+welcome=Bienvenido
+credits=Créditos:
+credits2=Créditos
+credit=Crédito
+order=Comprar
+try=Probar
+more=Más
+moregames=Más Juegos
+next=Siguiente
+previous=Anterior
+back=Atrás
+start=Página de inicio
+main=Principal
+no_orders=You must first download and test some games to be able to rate them.
+save=Guardar
+morepics=Más fotos
+submit=Enviar
+up=Arriba
+null=Página principal
+morevideos=Más videos
+search=Buscar
+categories=categorías
+game=Juego
+tone=Tono
+pic=Foto
+listen=Escuchar
+
+not_supp_title=Desafortudamente, el modelo de su telÃ©fono no es compatible.
+not_supp=Desafortudamente, el modelo de su telÃ©fono no es compatible.
+
+bookmark=Marcador
+bookmark_ok=El Marcador fue enviado a tu tel\u00E9fono. Deber\u00EDas recibirlo en breve.
+bookmark_failed=El Marcador no pudo ser enviado a tu tel\u00E9fono. Int\u00E9ntalo m\u00E1s tarde.
+
+error=Error
+not_found=Elemento no encontrado.
+authnerror=Autentificacián fallida. 
+
+terms=TÃ©rminos y condiciones.
+
+moretones=Más tonos
+morepics=Más fotos
+
+java_games=Juegos
+tones=Tonos
+adult=Adultos
+real_tones=Sonidos Reales
+images=Imagenes
+videos=Videos
+themes=Themes
+anims=Animadas
+texts=Textos
+specials=Promociones
+
+download=Descarga
+subscribe=Subscribirse
+buymore=Comprar Más créditos
+
+entercell=Ingrese su nÃºmero telefÃ³nico:
+enter=Entrar
+enter_PIN=Introduzca pin
+confirm=Confirmar
+cancel=Cancelacion
+msg_subscription_terminated_failed=fin fallado
+msg_subscription_terminated=terminado con Ã©xito
+deactive_service_message_subscribeduser=ermine la suscripciÃ³n
+would_like_terminate_subscription=¿Esta usted seguro que usted quiere terminar?
+deactive_service_message_Unsubscribeduser= Cancelar suscripcion
+deactive_service_message_subscribeduser= Cancelar suscripcion 
+
+Confirmation_of_adhoc_download=Descarga confirmar?
